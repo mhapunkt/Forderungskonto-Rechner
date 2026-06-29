@@ -411,13 +411,12 @@ table.sum-table tr.grand td{font-family:var(--serif);font-size:18px;font-weight:
       <div class="grid-3" style="margin-top:4px">
         <label>Zinsen während der Ratenzahlung
           <select id="t_zinsModus">
-            <option value="weiter">weiter nach FoKo berechnen (Satz % p.a.)</option>
-            <option value="absolut">fester Betrag (absolut)</option>
-            <option value="keine">keine weiteren Zinsen</option>
+            <option value="foko">weiter nach Forderungskonto (Verzugszinsen, automatisch)</option>
+            <option value="fest">fester Zinssatz (% p.a.)</option>
+            <option value="keine">keine Zinsen während der Laufzeit</option>
           </select>
         </label>
-        <label id="t_zinsSatz_l">Zinssatz während Ratenzahlung (% p.a.)<input id="t_zinsSatz" inputmode="decimal" placeholder="z.B. 6,27"></label>
-        <label id="t_zinsBetrag_l" style="display:none">vereinbarte Zinsen gesamt (€)<input id="t_zinsBetrag" inputmode="decimal" placeholder="0,00"></label>
+        <label id="t_zinsSatz_l" style="display:none">fester Zinssatz (% p.a.)<input id="t_zinsSatz" inputmode="decimal" placeholder="z.B. 6,27"></label>
       </div>
       <label class="chk" style="margin-top:10px"><input type="checkbox" id="t_ersteAmAnfang"> erste Rate bereits am Anfangsdatum fällig</label>
       <p class="callout" style="margin-top:12px" id="t_startinfo"></p>
@@ -667,7 +666,7 @@ function leerState() {
     tilgung: {
       anfang: "", intervall: "monatlich", modus: "rate", rate: "", laufzeitMonate: "12",
       startBetrag: "", kosten: "",
-      zinsModus: "weiter", zinsBetrag: "", zinsSatz: "", ersteAmAnfang: false
+      zinsModus: "foko", zinsSatz: "", ersteAmAnfang: false
     }
   };
 }
@@ -1011,8 +1010,11 @@ function buildJournal(r) {
    ============================================================ */
 function tilg() {
   if (!state.tilgung) state.tilgung = {};
-  const d = { anfang: "", intervall: "monatlich", modus: "rate", rate: "", laufzeitMonate: "12", startBetrag: "", kosten: "", zinsModus: "weiter", zinsBetrag: "", zinsSatz: "", ersteAmAnfang: false };
+  const d = { anfang: "", intervall: "monatlich", modus: "rate", rate: "", laufzeitMonate: "12", startBetrag: "", kosten: "", zinsModus: "foko", zinsSatz: "", ersteAmAnfang: false };
   for (const k in d) if (!(k in state.tilgung)) state.tilgung[k] = d[k];
+  // Migration alter Werte
+  if (state.tilgung.zinsModus === "weiter") state.tilgung.zinsModus = "foko";
+  if (state.tilgung.zinsModus === "absolut") state.tilgung.zinsModus = "fest";
   return state.tilgung;
 }
 const INTERVALL_LABEL = { woechentlich: "wöchentlich", zweiwoechentlich: "2-wöchentlich", monatlich: "monatlich", vierteljaehrlich: "vierteljährlich", jaehrlich: "jährlich" };
@@ -1047,7 +1049,20 @@ function flatInterest(balance, ratePa, from, to) {
   return tot;
 }
 const INTERVALL_MONATE = { woechentlich: 12 / 52, zweiwoechentlich: 24 / 52, monatlich: 1, vierteljaehrlich: 3, jaehrlich: 12 };
-function runSchedule(startSaldo, rate, ratePa, anfang, intervall, ersteAmAnfang) {
+/* Maßgeblicher Zinssatz-Typ aus dem Forderungskonto: größte verzinsliche Position */
+function fokoZinsDescriptor() {
+  const verz = (state.positionen || []).filter(p => p.zinsTyp && p.zinsTyp !== "keine" && num(p.betrag) > 0);
+  if (!verz.length) return { zinsTyp: "keine", freierZinssatz: 0 };
+  verz.sort((a, b) => num(b.betrag) - num(a.betrag));
+  return { zinsTyp: verz[0].zinsTyp, freierZinssatz: verz[0].freierZinssatz };
+}
+function zinsTypLabel(zinsTyp, freier) {
+  return zinsTyp === "5pp" ? "Basis + 5 PP (§ 288 I BGB)"
+    : zinsTyp === "9pp" ? "Basis + 9 PP (§ 288 II BGB)"
+    : zinsTyp === "frei" ? ("fest " + fmtPct(num(freier)))
+    : "unverzinslich";
+}
+function runSchedule(startSaldo, rate, interestFn, anfang, intervall, ersteAmAnfang) {
   const rows = [];
   let balance = startSaldo, prev = anfang;
   let payDate = ersteAmAnfang ? anfang : addInterval(anfang, intervall);
@@ -1055,9 +1070,9 @@ function runSchedule(startSaldo, rate, ratePa, anfang, intervall, ersteAmAnfang)
   while (balance > 0.005) {
     if (++guard > 1500) { blocked = true; break; }
     const tage = daysBetween(prev, payDate);
-    const zinsen = flatInterest(balance, ratePa, prev, payDate);
+    const zinsen = interestFn(balance, prev, payDate);
     balance += zinsen;
-    if (rows.length === 0 && ratePa > 0 && rate <= zinsen + 0.005) { blocked = true; break; }
+    if (rows.length === 0 && zinsen > 0 && rate <= zinsen + 0.005) { blocked = true; break; }
     const pay = Math.min(rate, balance);
     const zinsAnteil = Math.min(pay, zinsen);
     const tilgAnteil = pay - zinsAnteil;
@@ -1087,19 +1102,34 @@ function buildTilgungsplan() {
   const manuell = String(t.startBetrag).trim() !== "";
   const basis = manuell ? num(t.startBetrag) : startFoko;
   const kosten = num(t.kosten);
-  const zinsModus = t.zinsModus || "weiter";
-  const zinsBetrag = zinsModus === "absolut" ? num(t.zinsBetrag) : 0;
-  const startSaldo = basis + kosten + zinsBetrag;
-  const ratePa = zinsModus === "weiter" ? num(t.zinsSatz) : 0;
-
+  const startSaldo = basis + kosten;
   if (startSaldo <= 0.005) return { ok: false, msg: "Startsaldo ist 0. Bitte einen Betrag eingeben oder aus dem Forderungskonto übernehmen." };
+
+  // Verzinsung während der Laufzeit
+  const zinsModus = t.zinsModus || "foko";
+  let pseudo = { zinsTyp: "keine", freierZinssatz: 0 }, zinsLabel = "keine", ratePaApprox = 0;
+  if (zinsModus === "fest") {
+    pseudo = { zinsTyp: "frei", freierZinssatz: num(t.zinsSatz) };
+    ratePaApprox = num(t.zinsSatz);
+    zinsLabel = "fester Zinssatz " + fmtPct(ratePaApprox) + " p.a.";
+  } else if (zinsModus === "foko") {
+    const d = fokoZinsDescriptor();
+    pseudo = { zinsTyp: d.zinsTyp, freierZinssatz: num(d.freierZinssatz) };
+    const er = effRate(pseudo, anfang);
+    ratePaApprox = er || 0;
+    zinsLabel = d.zinsTyp === "keine"
+      ? "keine (keine verzinsliche Forderung im FoKo)"
+      : "Verzugszinsen lt. FoKo: " + zinsTypLabel(d.zinsTyp, d.freierZinssatz) + (er !== null ? ", akt. " + fmtPct(er) + " p.a." : "");
+  }
+  const fehler = {};
+  const interestFn = (bal, from, to) => accrueInterest(pseudo, bal, from, to, fehler, null);
 
   const modus = t.modus || "rate";
   let rate, rateRaw, zielRaten = 0, laufzeitMonate = 0;
   if (modus === "laufzeit") {
     laufzeitMonate = num(t.laufzeitMonate) || 12;
     zielRaten = Math.max(1, Math.round(laufzeitMonate / (INTERVALL_MONATE[t.intervall] || 1)));
-    rateRaw = annuityRate(startSaldo, ratePa, t.intervall, zielRaten);
+    rateRaw = annuityRate(startSaldo, ratePaApprox, t.intervall, zielRaten);
     rate = roundRate(rateRaw);
   } else {
     const roh = String(t.rate).trim();
@@ -1110,15 +1140,17 @@ function buildTilgungsplan() {
     if (rate <= 0) return { ok: false, msg: "Die Wunsch-Rate muss größer als 0 € sein (eingegeben: " + esc(roh) + ")." };
   }
 
-  const sch = runSchedule(startSaldo, rate, ratePa, anfang, t.intervall, !!t.ersteAmAnfang);
+  const sch = runSchedule(startSaldo, rate, interestFn, anfang, t.intervall, !!t.ersteAmAnfang);
   if (sch.blocked || !sch.rows.length) {
     return { ok: false, msg: "Die Rate (" + fmtEUR(rate) + ") deckt nicht einmal die laufenden Zinsen (" + fmtEUR(sch.firstZins) + " in der ersten Periode). Bitte höhere Rate bzw. kürzere Laufzeit wählen." };
   }
   if (sch.rows.length > 1200) warn.push("Sehr viele Raten – bitte Rate/Laufzeit prüfen.");
+  if (fehler.kein) warn.push("Für einen Teil der Laufzeit ist kein Basiszinssatz hinterlegt – diese Zeiträume blieben zinsfrei. Bitte Basiszinssatz-Tabelle ergänzen.");
+  if (fehler.extra) warn.push("Zinsen laufen über den letzten hinterlegten Basiszinssatz (" + fmtPct(fehler.extra.satz) + " ab " + fmtDate(fehler.extra.ab) + ") hinaus und werden fortgeschrieben.");
 
   return {
-    ok: true, anfang, startFoko, manuell, basis, kosten, zinsBetrag, startSaldo,
-    rate, rateRaw, ratePa, zinsModus, modus, laufzeitMonate, zielRaten, intervall: t.intervall,
+    ok: true, anfang, startFoko, manuell, basis, kosten, startSaldo,
+    rate, rateRaw, ratePaApprox, zinsModus, zinsLabel, modus, laufzeitMonate, zielRaten, intervall: t.intervall,
     rows: sch.rows, anzahl: sch.rows.length,
     summeZahlungen: sch.summeZahlungen, summeZinsen: sch.summeZinsen,
     letzteRate: sch.rows[sch.rows.length - 1].rate,
@@ -1587,9 +1619,8 @@ function syncTilgFromDOM() {
   t.rate = g("#t_rate");
   t.laufzeitMonate = g("#t_laufzeit") || "12";
   t.kosten = g("#t_kosten");
-  t.zinsModus = g("#t_zinsModus") || "weiter";
+  t.zinsModus = g("#t_zinsModus") || "foko";
   t.zinsSatz = g("#t_zinsSatz");
-  t.zinsBetrag = g("#t_zinsBetrag");
   const cb = $("#t_ersteAmAnfang"); t.ersteAmAnfang = cb ? cb.checked : false;
 }
 function renderTilgung() {
@@ -1602,14 +1633,12 @@ function renderTilgung() {
   set("#t_rate", t.rate);
   set("#t_laufzeit", t.laufzeitMonate || "12");
   set("#t_kosten", t.kosten);
-  set("#t_zinsModus", t.zinsModus || "weiter");
+  set("#t_zinsModus", t.zinsModus || "foko");
   set("#t_zinsSatz", t.zinsSatz);
-  set("#t_zinsBetrag", t.zinsBetrag);
   const cb = $("#t_ersteAmAnfang"); if (cb) cb.checked = !!t.ersteAmAnfang;
-  const mode = t.zinsModus || "weiter";
-  const sl = $("#t_zinsSatz_l"), bl = $("#t_zinsBetrag_l");
-  if (sl) sl.style.display = mode === "weiter" ? "" : "none";
-  if (bl) bl.style.display = mode === "absolut" ? "" : "none";
+  const mode = t.zinsModus || "foko";
+  const sl = $("#t_zinsSatz_l");
+  if (sl) sl.style.display = mode === "fest" ? "" : "none";
   const rl = $("#t_rate_l"), ll = $("#t_laufzeit_l");
   const byTerm = (t.modus || "rate") === "laufzeit";
   if (rl) rl.style.display = byTerm ? "none" : "";
@@ -1637,17 +1666,14 @@ function renderTilgResult() {
 
   let h = "";
   if (r.warn.length) h += '<div class="ka-warn">' + r.warn.map(esc).join("<br>") + "</div>";
-  const zinsTxt = r.zinsModus === "weiter" ? ("laufend " + fmtPct(r.ratePa) + " p.a.")
-    : r.zinsModus === "absolut" ? ("fester Betrag " + fmtEUR(r.zinsBetrag)) : "keine";
   const rateTxt = fmtEUR(r.rate) + (r.modus === "laufzeit" ? " (rechnerisch " + fmtEUR(r.rateRaw) + " für " + r.laufzeitMonate + " Monate)" : (r.rate !== r.rateRaw ? " (gerundet von " + fmtEUR(r.rateRaw) + ")" : ""));
   h += '<div class="card tplan-head"><h3>Ratenzahlungsvereinbarung</h3><table class="sum-table">'
     + row(r.manuell ? "Startsaldo (manuell)" : "Offener Saldo lt. Forderungskonto", fmtEUR(r.basis))
     + (r.kosten ? row("zzgl. Kosten der Ratenzahlungsvereinbarung", fmtEUR(r.kosten)) : "")
-    + (r.zinsBetrag ? row("zzgl. vereinbarte Zinsen", fmtEUR(r.zinsBetrag)) : "")
     + rowStrong("Startsaldo zum " + fmtDate(isoFromUTC(r.anfang)), fmtEUR(r.startSaldo))
     + row("Rate", rateTxt)
     + row("Intervall", INTERVALL_LABEL[r.intervall] || r.intervall)
-    + row("Zinsen während Ratenzahlung", zinsTxt)
+    + row("Zinsen während Ratenzahlung", r.zinsLabel)
     + row("Anzahl Raten", String(r.anzahl) + (r.modus === "laufzeit" ? " (Ziel: " + r.zielRaten + ")" : ""))
     + row("davon letzte Rate", fmtEUR(r.letzteRate))
     + row("Summe Zahlungen", fmtEUR(r.summeZahlungen))
@@ -1800,7 +1826,7 @@ function bindEvents() {
   tBind("#t_anfang", "anfang"); tBind("#t_intervall", "intervall"); tBind("#t_modus", "modus");
   tBind("#t_start", "startBetrag"); tBind("#t_rate", "rate"); tBind("#t_laufzeit", "laufzeitMonate");
   tBind("#t_kosten", "kosten"); tBind("#t_zinsModus", "zinsModus"); tBind("#t_zinsSatz", "zinsSatz");
-  tBind("#t_zinsBetrag", "zinsBetrag"); tBind("#t_ersteAmAnfang", "ersteAmAnfang", true);
+  tBind("#t_ersteAmAnfang", "ersteAmAnfang", true);
   if ($("#t_calc")) $("#t_calc").onclick = () => { syncTilgFromDOM(); renderTilgResult(); };
   if ($("#t_fromfoko")) $("#t_fromfoko").onclick = () => {
     const a = toUTC(tilg().anfang);
@@ -1969,7 +1995,6 @@ function buildXML() {
   xml += "    " + e("LaufzeitMonate", tp.laufzeitMonate || "") + "\n";
   xml += "    " + e("Kosten", tp.kosten || "") + "\n";
   xml += "    " + e("Zinssatz", tp.zinsSatz || "") + "\n";
-  xml += "    " + e("Zinsbetrag", tp.zinsBetrag || "") + "\n";
   xml += "  </Tilgungsplan>\n";
   xml += "</Forderungskonto>\n";
   return xml;
@@ -2052,8 +2077,7 @@ function parseOwnXML(root) {
       rate: g(tp, "Rate"),
       laufzeitMonate: g(tp, "LaufzeitMonate") || "12",
       kosten: g(tp, "Kosten"),
-      zinsModus: tp.getAttribute("zinsModus") || "weiter",
-      zinsBetrag: g(tp, "Zinsbetrag"),
+      zinsModus: (function(z){ return z === "weiter" ? "foko" : z === "absolut" ? "fest" : (z || "foko"); })(tp.getAttribute("zinsModus")),
       zinsSatz: g(tp, "Zinssatz"),
       ersteAmAnfang: tp.getAttribute("ersteAmAnfang") === "1"
     };
