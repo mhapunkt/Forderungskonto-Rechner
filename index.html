@@ -90,6 +90,9 @@ select{cursor:pointer}
 .add-btn.ghost:hover{background:var(--line2)}
 .add-btn{background:var(--brass);color:#fff;border:none;padding:9px 20px;border-radius:30px;font-size:14px;font-weight:600;letter-spacing:.01em}
 .add-btn:hover{background:var(--brass2)}
+.chk{flex-direction:row;align-items:center;gap:8px;font-size:13px;color:var(--ink2)}
+.chk input{width:auto}
+.tplan-head{margin-bottom:10px}
 
 /* manuelle Verteilung */
 .mv-box{margin-top:13px;padding:12px 14px;background:var(--line2);border-radius:8px}
@@ -191,6 +194,7 @@ table.sum-table tr.grand td{font-family:var(--serif);font-size:18px;font-weight:
 }
 
 /* ---------- Druck / PDF ---------- */
+.print-only{display:none}
 @media print{
   @page{size:A4 portrait;margin:16mm 14mm}
   .topbar,.tabs,#toast{display:none!important}
@@ -198,6 +202,12 @@ table.sum-table tr.grand td{font-family:var(--serif);font-size:18px;font-weight:
   .wrap{max-width:none;padding:0}
   .panel{display:none!important}
   #panel-auszug{display:block!important}
+  body.print-tilgung #panel-auszug{display:none!important}
+  body.print-tilgung #panel-tilgung{display:block!important}
+  body.print-tilgung #panel-tilgung > .section-h, body.print-tilgung #panel-tilgung > .card{display:none!important}
+  body.print-tilgung .print-only{display:block!important}
+  body.print-tilgung .doc-letterhead.print-only{display:flex!important}
+  .print-title{font-size:18pt;text-transform:uppercase;letter-spacing:.04em;margin:6px 0 16px;font-weight:700}
   body{background:#fff;font-size:11pt;color:#000}
   .auszug-sheet{border:none;border-radius:0;padding:0;margin:0}
   .auszug-sheet h1{font-size:18pt}
@@ -208,6 +218,7 @@ table.sum-table tr.grand td{font-family:var(--serif);font-size:18px;font-weight:
   table.ledger,table.sum-table{page-break-inside:auto}
   tr{page-break-inside:avoid}
   .ka-warn{display:none!important}
+  .tplan-head{border:none!important;padding:0!important}
 }
 </style>
 </head>
@@ -236,6 +247,7 @@ table.sum-table tr.grand td{font-family:var(--serif);font-size:18px;font-weight:
   <button class="tab" data-tab="zahlungen">Zahlungen</button>
   <button class="tab" data-tab="basis">Basiszinssatz</button>
   <button class="tab" data-tab="auszug">Kontoauszug</button>
+  <button class="tab" data-tab="tilgung">Tilgungsplan</button>
 </nav>
 
 <div class="wrap">
@@ -352,6 +364,72 @@ table.sum-table tr.grand td{font-family:var(--serif);font-size:18px;font-weight:
     </div>
   </section>
 
+  <!-- TILGUNGSPLAN -->
+  <section class="panel" id="panel-tilgung">
+    <div class="doc-letterhead print-only"><img class="doc-logo" src="https://mhanwaelte.de/wp-content/uploads/2026/05/mh-dreizeiler-frei-1-300x160.png" alt="mh emmerich anwälte frankfurt"></div>
+    <h1 class="print-only print-title">Tilgungsplan / Ratenzahlungsvereinbarung</h1>
+    <div class="section-h" style="margin-bottom:14px">
+      <h2>Tilgungsplan</h2>
+      <div class="hint">Ratenzahlungsvereinbarung auf Basis des Forderungskontos. „Plan drucken" für PDF.</div>
+    </div>
+    <div class="card">
+      <h3>Vorgaben</h3>
+      <div class="grid-3">
+        <label>Anfangsdatum (Beginn der Ratenzahlung)<input type="date" id="t_anfang"></label>
+        <label>Zahlungsintervall
+          <select id="t_intervall">
+            <option value="woechentlich">wöchentlich</option>
+            <option value="zweiwoechentlich">2-wöchentlich</option>
+            <option value="monatlich">monatlich</option>
+            <option value="vierteljaehrlich">vierteljährlich</option>
+            <option value="jaehrlich">jährlich</option>
+          </select>
+        </label>
+        <label>Berechnung nach
+          <select id="t_modus">
+            <option value="rate">fester Rate (Höhe)</option>
+            <option value="laufzeit">fester Laufzeit</option>
+          </select>
+        </label>
+      </div>
+      <div class="grid-3" style="margin-top:4px">
+        <label>Startsaldo (€) – leer = aus Forderungskonto<input id="t_start" inputmode="decimal" placeholder="aus FoKo übernehmen"></label>
+        <label id="t_rate_l">Wunsch-Rate (€)<input id="t_rate" inputmode="decimal" placeholder="z.B. 250,00"></label>
+        <label id="t_laufzeit_l" style="display:none">Laufzeit
+          <select id="t_laufzeit">
+            <option value="6">6 Monate</option>
+            <option value="12">12 Monate</option>
+            <option value="18">18 Monate</option>
+            <option value="24">24 Monate</option>
+            <option value="36">36 Monate</option>
+            <option value="48">48 Monate</option>
+            <option value="60">60 Monate</option>
+          </select>
+        </label>
+        <label>Kosten der Ratenzahlungsvereinbarung (€)<input id="t_kosten" inputmode="decimal" placeholder="0,00"></label>
+      </div>
+      <div class="grid-3" style="margin-top:4px">
+        <label>Zinsen während der Ratenzahlung
+          <select id="t_zinsModus">
+            <option value="weiter">weiter nach FoKo berechnen (Satz % p.a.)</option>
+            <option value="absolut">fester Betrag (absolut)</option>
+            <option value="keine">keine weiteren Zinsen</option>
+          </select>
+        </label>
+        <label id="t_zinsSatz_l">Zinssatz während Ratenzahlung (% p.a.)<input id="t_zinsSatz" inputmode="decimal" placeholder="z.B. 6,27"></label>
+        <label id="t_zinsBetrag_l" style="display:none">vereinbarte Zinsen gesamt (€)<input id="t_zinsBetrag" inputmode="decimal" placeholder="0,00"></label>
+      </div>
+      <label class="chk" style="margin-top:10px"><input type="checkbox" id="t_ersteAmAnfang"> erste Rate bereits am Anfangsdatum fällig</label>
+      <p class="callout" style="margin-top:12px" id="t_startinfo"></p>
+      <div class="add-row" style="margin-top:6px">
+        <button class="add-btn ghost" id="t_fromfoko">↧ Startsaldo aus Forderungskonto übernehmen</button>
+        <button class="add-btn" id="t_calc">Tilgungsplan berechnen</button>
+        <button class="add-btn ghost" id="t_print">Plan drucken</button>
+      </div>
+    </div>
+    <div id="t_result"></div>
+  </section>
+
 </div>
 
 <div id="toast"></div>
@@ -367,7 +445,18 @@ table.sum-table tr.grand td{font-family:var(--serif);font-size:18px;font-weight:
 const $  = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 const uid = () => "id" + Math.random().toString(36).slice(2, 9);
-const num = (v) => { const n = parseFloat(String(v).replace(",", ".")); return isFinite(n) ? n : 0; };
+const num = (v) => {
+  if (typeof v === "number") return isFinite(v) ? v : 0;
+  let s = String(v == null ? "" : v).trim().replace(/[^\d.,-]/g, "");
+  if (!s) return 0;
+  const hasComma = s.includes(",");
+  const dots = (s.match(/\./g) || []).length;
+  if (hasComma) s = s.replace(/\./g, "").replace(",", ".");          // "1.234,56" -> 1234.56
+  else if (dots > 1) s = s.replace(/\./g, "");                        // "1.234.567" -> 1234567
+  else if (dots === 1 && /^-?\d{1,3}\.\d{3}$/.test(s)) s = s.replace(".", ""); // "1.250" -> 1250
+  const n = parseFloat(s);
+  return isFinite(n) ? n : 0;
+};
 const MS_DAY = 86400000;
 
 function toUTC(iso) {
@@ -540,14 +629,14 @@ function expandAllPositions(list, bound) {
           id: p.id + "#" + k, parentId: p.id, occ: k + 1, parentNr: idx + 1,
           typ: p.typ, bezeichnung: (p.bezeichnung || "Wiederkehrend") + " – fällig " + isoFromUTC(due),
           betrag: p.betrag, datum: isoFromUTC(due),
-          zinsTyp: p.zinsTyp, freierZinssatz: p.freierZinssatz
+          zinsTyp: p.zinsTyp, freierZinssatz: p.freierZinssatz, zinsEnde: p.zinsEnde || ""
         });
       });
     } else {
       out.push({
         id: p.id, parentId: p.id, occ: 0, parentNr: idx + 1,
         typ: p.typ, bezeichnung: p.bezeichnung, betrag: p.betrag, datum: p.datum,
-        zinsTyp: p.zinsTyp, freierZinssatz: p.freierZinssatz
+        zinsTyp: p.zinsTyp, freierZinssatz: p.freierZinssatz, zinsEnde: p.zinsEnde || ""
       });
     }
   });
@@ -572,7 +661,12 @@ function leerState() {
     positionen: [],
     zahlungen: [],
     basiszinssaetze: defaultBasis(),
-    basisQuelle: "Manuell hinterlegt (Werte gem. Bekanntmachung Deutsche Bundesbank, § 247 BGB)"
+    basisQuelle: "Manuell hinterlegt (Werte gem. Bekanntmachung Deutsche Bundesbank, § 247 BGB)",
+    tilgung: {
+      anfang: "", intervall: "monatlich", modus: "rate", rate: "", laufzeitMonate: "12",
+      startBetrag: "", kosten: "",
+      zinsModus: "weiter", zinsBetrag: "", zinsSatz: "", ersteAmAnfang: false
+    }
   };
 }
 
@@ -694,8 +788,8 @@ function accrueInterest(pos, principal, from, to, fehler, sink) {
 }
 
 /* ---------- Kontoberechnung ---------- */
-function computeAccount() {
-  const stichtag = toUTC(state.stichtag) || toUTC(todayISO());
+function computeAccount(stichtagOverride) {
+  const stichtag = toUTC(stichtagOverride) || toUTC(state.stichtag) || toUTC(todayISO());
   const warn = [];
   const fehler = { kein: false };
 
@@ -716,6 +810,7 @@ function computeAccount() {
     zinsTyp: p.zinsTyp, freierZinssatz: p.freierZinssatz,
     betrag: num(p.betrag),
     start: toUTC(p.datum),
+    zinsEnde: toUTC(p.zinsEnde),
     out: 0, accrued: 0, interestTotal: 0,
     principalPaid: 0, interestPaid: 0,
     active: false, lastAccr: null, staffel: [],
@@ -740,8 +835,10 @@ function computeAccount() {
   function accrueTo(toDate) {
     positions.forEach((p) => {
       if (p.active) {
-        if (p.out > 1e-9) {
-          const i = accrueInterest(p, p.out, p.lastAccr, toDate, fehler, p.staffel);
+        // Verzinsung ggf. befristet: nicht über "Zinsen berechnen bis" hinaus
+        const bis = (p.zinsEnde != null && p.zinsEnde < toDate) ? p.zinsEnde : toDate;
+        if (p.out > 1e-9 && bis > p.lastAccr) {
+          const i = accrueInterest(p, p.out, p.lastAccr, bis, fehler, p.staffel);
           p.accrued += i; p.interestTotal += i;
         }
         p.lastAccr = toDate;
@@ -798,10 +895,11 @@ function computeAccount() {
 }
 
 function zinsInfo(p, stichtag) {
+  const bis = (p.zinsEnde != null && p.zinsTyp !== "keine") ? " bis " + fmtDate(isoFromUTC(p.zinsEnde)) : "";
   switch (p.zinsTyp) {
-    case "5pp": { const r = effRate(p, stichtag); return "Basis + 5 PP" + (r === null ? "" : " (akt. " + fmtPct(r) + ")"); }
-    case "9pp": { const r = effRate(p, stichtag); return "Basis + 9 PP" + (r === null ? "" : " (akt. " + fmtPct(r) + ")"); }
-    case "frei": return "fest " + fmtPct(num(p.freierZinssatz));
+    case "5pp": { const r = effRate(p, stichtag); return "Basis + 5 PP" + (r === null ? "" : " (akt. " + fmtPct(r) + ")") + bis; }
+    case "9pp": { const r = effRate(p, stichtag); return "Basis + 9 PP" + (r === null ? "" : " (akt. " + fmtPct(r) + ")") + bis; }
+    case "frei": return "fest " + fmtPct(num(p.freierZinssatz)) + bis;
     default: return "unverzinslich";
   }
 }
@@ -906,6 +1004,126 @@ function buildJournal(r) {
   });
 }
 
+/* ============================================================
+   TILGUNGSPLAN (Ratenzahlungsvereinbarung)
+   ============================================================ */
+function tilg() {
+  if (!state.tilgung) state.tilgung = {};
+  const d = { anfang: "", intervall: "monatlich", modus: "rate", rate: "", laufzeitMonate: "12", startBetrag: "", kosten: "", zinsModus: "weiter", zinsBetrag: "", zinsSatz: "", ersteAmAnfang: false };
+  for (const k in d) if (!(k in state.tilgung)) state.tilgung[k] = d[k];
+  return state.tilgung;
+}
+const INTERVALL_LABEL = { woechentlich: "wöchentlich", zweiwoechentlich: "2-wöchentlich", monatlich: "monatlich", vierteljaehrlich: "vierteljährlich", jaehrlich: "jährlich" };
+function addMonthsUTC(t, m) {
+  const d = new Date(t), day = d.getUTCDate();
+  const base = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + m, 1));
+  const last = lastDayOfMonth(base.getUTCFullYear(), base.getUTCMonth());
+  return Date.UTC(base.getUTCFullYear(), base.getUTCMonth(), Math.min(day, last));
+}
+function addInterval(t, intervall) {
+  switch (intervall) {
+    case "woechentlich": return t + 7 * MS_DAY;
+    case "zweiwoechentlich": return t + 14 * MS_DAY;
+    case "vierteljaehrlich": return addMonthsUTC(t, 3);
+    case "jaehrlich": return addMonthsUTC(t, 12);
+    default: return addMonthsUTC(t, 1);
+  }
+}
+/* Aufrundung der Rate: < 500 € auf volle 25 €, ab 500 € auf volle 50 € */
+function roundRate(x) {
+  if (!(x > 0)) return 0;
+  return x < 500 ? Math.ceil(x / 25) * 25 : Math.ceil(x / 50) * 50;
+}
+function flatInterest(balance, ratePa, from, to) {
+  if (!(ratePa > 0) || to <= from) return 0;
+  let tot = 0, a = from;
+  while (a < to) {
+    const b = Math.min(nextYearStart(a), to);
+    tot += balance * (ratePa / 100) * daysBetween(a, b) / yearLen(new Date(a).getUTCFullYear());
+    a = b;
+  }
+  return tot;
+}
+const INTERVALL_MONATE = { woechentlich: 12 / 52, zweiwoechentlich: 24 / 52, monatlich: 1, vierteljaehrlich: 3, jaehrlich: 12 };
+function runSchedule(startSaldo, rate, ratePa, anfang, intervall, ersteAmAnfang) {
+  const rows = [];
+  let balance = startSaldo, prev = anfang;
+  let payDate = ersteAmAnfang ? anfang : addInterval(anfang, intervall);
+  let summeZinsen = 0, summeZahlungen = 0, guard = 0, blocked = false;
+  while (balance > 0.005) {
+    if (++guard > 1500) { blocked = true; break; }
+    const tage = daysBetween(prev, payDate);
+    const zinsen = flatInterest(balance, ratePa, prev, payDate);
+    balance += zinsen;
+    if (rows.length === 0 && ratePa > 0 && rate <= zinsen + 0.005) { blocked = true; break; }
+    const pay = Math.min(rate, balance);
+    const zinsAnteil = Math.min(pay, zinsen);
+    const tilgAnteil = pay - zinsAnteil;
+    balance -= pay;
+    summeZinsen += zinsen; summeZahlungen += pay;
+    rows.push({ nr: rows.length + 1, datum: payDate, tage, zinsen, rate: pay, zinsAnteil, tilgAnteil, rest: Math.max(0, balance) });
+    prev = payDate; payDate = addInterval(payDate, intervall);
+  }
+  return { rows, summeZinsen, summeZahlungen, blocked, firstZins: rows.length ? rows[0].zinsen : 0 };
+}
+function annuityRate(S, ratePa, intervall, n) {
+  if (n <= 0) return S;
+  const avgDays = 365.25 * (INTERVALL_MONATE[intervall] || 1) / 12;
+  const i = (ratePa > 0) ? (ratePa / 100) * avgDays / 365.25 : 0;
+  if (i <= 0) return S / n;
+  return S * i / (1 - Math.pow(1 + i, -n));
+}
+function buildTilgungsplan() {
+  const t = tilg();
+  const warn = [];
+  const anfang = toUTC(t.anfang);
+  if (anfang == null) return { ok: false, msg: "Bitte ein Anfangsdatum angeben." };
+
+  // Saldo: aus Forderungskonto zum Anfangsdatum, bei manueller Eingabe überschrieben
+  const fk = computeAccount(t.anfang);
+  const startFoko = fk.gesamt;
+  const manuell = String(t.startBetrag).trim() !== "";
+  const basis = manuell ? num(t.startBetrag) : startFoko;
+  const kosten = num(t.kosten);
+  const zinsModus = t.zinsModus || "weiter";
+  const zinsBetrag = zinsModus === "absolut" ? num(t.zinsBetrag) : 0;
+  const startSaldo = basis + kosten + zinsBetrag;
+  const ratePa = zinsModus === "weiter" ? num(t.zinsSatz) : 0;
+
+  if (startSaldo <= 0.005) return { ok: false, msg: "Startsaldo ist 0. Bitte einen Betrag eingeben oder aus dem Forderungskonto übernehmen." };
+
+  const modus = t.modus || "rate";
+  let rate, rateRaw, zielRaten = 0, laufzeitMonate = 0;
+  if (modus === "laufzeit") {
+    laufzeitMonate = num(t.laufzeitMonate) || 12;
+    zielRaten = Math.max(1, Math.round(laufzeitMonate / (INTERVALL_MONATE[t.intervall] || 1)));
+    rateRaw = annuityRate(startSaldo, ratePa, t.intervall, zielRaten);
+    rate = roundRate(rateRaw);
+  } else {
+    const roh = String(t.rate).trim();
+    rateRaw = num(t.rate);
+    rate = roundRate(rateRaw);
+    if (roh === "") return { ok: false, msg: "Bitte eine Wunsch-Rate eingeben – oder oben auf „fester Laufzeit“ umstellen." };
+    if (rateRaw < 0) return { ok: false, msg: "Die Wunsch-Rate darf nicht negativ sein (eingegeben: " + esc(roh) + ")." };
+    if (rate <= 0) return { ok: false, msg: "Die Wunsch-Rate muss größer als 0 € sein (eingegeben: " + esc(roh) + ")." };
+  }
+
+  const sch = runSchedule(startSaldo, rate, ratePa, anfang, t.intervall, !!t.ersteAmAnfang);
+  if (sch.blocked || !sch.rows.length) {
+    return { ok: false, msg: "Die Rate (" + fmtEUR(rate) + ") deckt nicht einmal die laufenden Zinsen (" + fmtEUR(sch.firstZins) + " in der ersten Periode). Bitte höhere Rate bzw. kürzere Laufzeit wählen." };
+  }
+  if (sch.rows.length > 1200) warn.push("Sehr viele Raten – bitte Rate/Laufzeit prüfen.");
+
+  return {
+    ok: true, anfang, startFoko, manuell, basis, kosten, zinsBetrag, startSaldo,
+    rate, rateRaw, ratePa, zinsModus, modus, laufzeitMonate, zielRaten, intervall: t.intervall,
+    rows: sch.rows, anzahl: sch.rows.length,
+    summeZahlungen: sch.summeZahlungen, summeZinsen: sch.summeZinsen,
+    letzteRate: sch.rows[sch.rows.length - 1].rate,
+    warn
+  };
+}
+
 /* Zahlung verrechnen */
 function applyPayment(z, positions, warn) {
   // Manuelle Zuordnung (mit oder ohne gesetzliche Restverrechnung)
@@ -995,6 +1213,7 @@ function renderAll() {
   renderPositionen();
   renderZahlungen();
   renderBasis();
+  renderTilgung();
   recompute();
 }
 
@@ -1089,7 +1308,7 @@ function renderPositionen() {
               : `<label>Datum (Zinsbeginn)<input type="date" data-f="datum" data-i="${i}" value="${p.datum || ""}"></label>`}
       </div>
       ${wiederkehrendBlock}
-      <div class="grid-2">
+      <div class="grid-3">
         <label>Verzinsung
           <select data-f="zinsTyp" data-i="${i}">
             <option value="5pp">Basis + 5 Prozentpunkte (§ 288 I BGB)</option>
@@ -1100,6 +1319,9 @@ function renderPositionen() {
         </label>
         <label class="free-rate" style="${p.zinsTyp === "frei" ? "" : "visibility:hidden"}">freier Satz (% p.a.)
           <input data-f="freierZinssatz" data-i="${i}" inputmode="decimal" value="${p.freierZinssatz ?? ""}" placeholder="z.B. 4,00">
+        </label>
+        <label style="${p.zinsTyp === "keine" ? "visibility:hidden" : ""}">Zinsen berechnen bis (optional)
+          <input type="date" data-f="zinsEnde" data-i="${i}" value="${p.zinsEnde || ""}">
         </label>
       </div>`;
     wrap.appendChild(card);
@@ -1352,6 +1574,107 @@ function renderKontoauszug(r) {
 function esc(s) { return (s == null ? "" : String(s)).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
 function nl(s) { return (s || "").replace(/\n/g, "<br>"); }
 
+/* ---------- Tilgungsplan: Render ---------- */
+function syncTilgFromDOM() {
+  const t = tilg();
+  const g = (id) => { const e = $(id); return e ? e.value : ""; };
+  t.anfang = g("#t_anfang");
+  t.intervall = g("#t_intervall") || "monatlich";
+  t.modus = g("#t_modus") || "rate";
+  t.startBetrag = g("#t_start");
+  t.rate = g("#t_rate");
+  t.laufzeitMonate = g("#t_laufzeit") || "12";
+  t.kosten = g("#t_kosten");
+  t.zinsModus = g("#t_zinsModus") || "weiter";
+  t.zinsSatz = g("#t_zinsSatz");
+  t.zinsBetrag = g("#t_zinsBetrag");
+  const cb = $("#t_ersteAmAnfang"); t.ersteAmAnfang = cb ? cb.checked : false;
+}
+function renderTilgung() {
+  const t = tilg();
+  const set = (id, v) => { const el = $(id); if (el) el.value = v ?? ""; };
+  set("#t_anfang", t.anfang);
+  set("#t_intervall", t.intervall || "monatlich");
+  set("#t_modus", t.modus || "rate");
+  set("#t_start", t.startBetrag);
+  set("#t_rate", t.rate);
+  set("#t_laufzeit", t.laufzeitMonate || "12");
+  set("#t_kosten", t.kosten);
+  set("#t_zinsModus", t.zinsModus || "weiter");
+  set("#t_zinsSatz", t.zinsSatz);
+  set("#t_zinsBetrag", t.zinsBetrag);
+  const cb = $("#t_ersteAmAnfang"); if (cb) cb.checked = !!t.ersteAmAnfang;
+  const mode = t.zinsModus || "weiter";
+  const sl = $("#t_zinsSatz_l"), bl = $("#t_zinsBetrag_l");
+  if (sl) sl.style.display = mode === "weiter" ? "" : "none";
+  if (bl) bl.style.display = mode === "absolut" ? "" : "none";
+  const rl = $("#t_rate_l"), ll = $("#t_laufzeit_l");
+  const byTerm = (t.modus || "rate") === "laufzeit";
+  if (rl) rl.style.display = byTerm ? "none" : "";
+  if (ll) ll.style.display = byTerm ? "" : "none";
+  renderTilgResult();
+}
+function renderTilgResult() {
+  const t = tilg();
+  const info = $("#t_startinfo"), res = $("#t_result");
+  if (!info || !res) return;
+  if (!t.anfang) {
+    info.innerHTML = "Bitte ein Anfangsdatum wählen – der offene Saldo wird dann taggenau aus dem Forderungskonto übernommen.";
+    res.innerHTML = '<p class="empty">Bitte oben ein <b>Anfangsdatum</b> eingeben, dann erscheint hier der Tilgungsplan.</p>';
+    return;
+  }
+  try {
+  const fk = computeAccount(t.anfang);
+  info.innerHTML = "Saldo aus Forderungskonto zum <b>" + fmtDate(t.anfang) + "</b>: <b>" + fmtEUR(fk.gesamt) + "</b> "
+    + "(Hauptforderung " + fmtEUR(fk.sumHaupt) + " + Kosten " + fmtEUR(fk.sumKosten) + " + Zinsen " + fmtEUR(fk.sumZinsen)
+    + (fk.guthaben > 0.005 ? " − Guthaben " + fmtEUR(fk.guthaben) : "") + "). "
+    + (String(t.startBetrag).trim() !== "" ? "<b>Manueller Startsaldo aktiv.</b>" : "Leeres Feld = dieser Wert wird übernommen.");
+
+  const r = buildTilgungsplan();
+  if (!r.ok) { res.innerHTML = '<p class="empty">' + esc(r.msg) + "</p>"; return; }
+
+  let h = "";
+  if (r.warn.length) h += '<div class="ka-warn">' + r.warn.map(esc).join("<br>") + "</div>";
+  const zinsTxt = r.zinsModus === "weiter" ? ("laufend " + fmtPct(r.ratePa) + " p.a.")
+    : r.zinsModus === "absolut" ? ("fester Betrag " + fmtEUR(r.zinsBetrag)) : "keine";
+  const rateTxt = fmtEUR(r.rate) + (r.modus === "laufzeit" ? " (rechnerisch " + fmtEUR(r.rateRaw) + " für " + r.laufzeitMonate + " Monate)" : (r.rate !== r.rateRaw ? " (gerundet von " + fmtEUR(r.rateRaw) + ")" : ""));
+  h += '<div class="card tplan-head"><h3>Ratenzahlungsvereinbarung</h3><table class="sum-table">'
+    + row(r.manuell ? "Startsaldo (manuell)" : "Offener Saldo lt. Forderungskonto", fmtEUR(r.basis))
+    + (r.kosten ? row("zzgl. Kosten der Ratenzahlungsvereinbarung", fmtEUR(r.kosten)) : "")
+    + (r.zinsBetrag ? row("zzgl. vereinbarte Zinsen", fmtEUR(r.zinsBetrag)) : "")
+    + rowStrong("Startsaldo zum " + fmtDate(r.anfang), fmtEUR(r.startSaldo))
+    + row("Rate", rateTxt)
+    + row("Intervall", INTERVALL_LABEL[r.intervall] || r.intervall)
+    + row("Zinsen während Ratenzahlung", zinsTxt)
+    + row("Anzahl Raten", String(r.anzahl) + (r.modus === "laufzeit" ? " (Ziel: " + r.zielRaten + ")" : ""))
+    + row("davon letzte Rate", fmtEUR(r.letzteRate))
+    + row("Summe Zahlungen", fmtEUR(r.summeZahlungen))
+    + row("davon Zinsen", fmtEUR(r.summeZinsen))
+    + "</table></div>";
+
+  // Plan-Tabelle
+  h += '<div class="ka-block-h">Tilgungsplan</div>';
+  h += '<table class="ledger"><thead><tr><th>Rate</th><th>fällig am</th><th class="r">Tage</th><th class="r">Zinsen</th><th class="r">Zahlung</th><th class="r">davon Zinsen</th><th class="r">davon Tilgung</th><th class="r">Restschuld</th></tr></thead><tbody>';
+  r.rows.forEach(x => {
+    h += "<tr><td>" + x.nr + "</td><td>" + fmtDate(isoFromUTC(x.datum)) + "</td>"
+      + '<td class="r">' + x.tage + "</td>"
+      + '<td class="r">' + fmtEUR(x.zinsen) + "</td>"
+      + '<td class="r strong">' + fmtEUR(x.rate) + "</td>"
+      + '<td class="r">' + fmtEUR(x.zinsAnteil) + "</td>"
+      + '<td class="r">' + fmtEUR(x.tilgAnteil) + "</td>"
+      + '<td class="r">' + fmtEUR(x.rest) + "</td></tr>";
+  });
+  h += "</tbody></table>";
+  res.innerHTML = h;
+  } catch (err) {
+    res.innerHTML = '<p class="empty">Fehler bei der Berechnung: ' + esc(err && err.message ? err.message : String(err)) + '</p>';
+  }
+
+  function row(a, b) { return '<tr><td>' + a + '</td><td class="r">' + b + "</td></tr>"; }
+  function rowStrong(a, b) { return '<tr class="grand"><td>' + a + '</td><td class="r">' + b + "</td></tr>"; }
+}
+
+
 /* ============================================================
    EVENT-BINDINGS
    ============================================================ */
@@ -1367,7 +1690,7 @@ function bindEvents() {
 
   // Positionen
   $("#add_pos").onclick = () => {
-    state.positionen.push({ id: uid(), art: "einmalig", typ: "haupt", bezeichnung: "", betrag: "", datum: "", zinsTyp: "5pp", freierZinssatz: "", intervall: "monatlich", tagModus: "kalender", tagN: 1, wochentag: 1, start: "", ende: "" });
+    state.positionen.push({ id: uid(), art: "einmalig", typ: "haupt", bezeichnung: "", betrag: "", datum: "", zinsTyp: "5pp", freierZinssatz: "", zinsEnde: "", intervall: "monatlich", tagModus: "kalender", tagN: 1, wochentag: 1, start: "", ende: "" });
     renderPositionen(); recompute();
   };
   $("#sort_pos").onclick = () => { sortPositionenByDate(); cleanupManuell(); renderPositionen(); renderZahlungen(); recompute(); toast("Positionen nach Datum sortiert."); };
@@ -1383,7 +1706,7 @@ function bindEvents() {
   });
   $("#pos_list").addEventListener("change", (e) => {
     const t = e.target;
-    if (["typ", "datum", "start", "ende", "wochentag", "art", "intervall", "tagModus"].includes(t.dataset.f)) { renderPositionen(); recompute(); }
+    if (["typ", "datum", "start", "ende", "wochentag", "art", "intervall", "tagModus", "zinsEnde"].includes(t.dataset.f)) { renderPositionen(); recompute(); }
   });
   $("#pos_list").addEventListener("click", (e) => {
     const b = e.target.closest("[data-del-pos]");
@@ -1462,6 +1785,34 @@ function bindEvents() {
     }
   };
   $("#btn-demo").onclick = loadDemo;
+
+  // Tilgungsplan
+  const tBind = (id, key, isCheck) => {
+    const el = $(id); if (!el) return;
+    const ev = (el.type === "date" || el.tagName === "SELECT" || isCheck) ? "change" : "input";
+    el.addEventListener(ev, () => {
+      tilg()[key] = isCheck ? el.checked : el.value;
+      if (id === "#t_zinsModus" || id === "#t_modus") renderTilgung(); else renderTilgResult();
+    });
+  };
+  tBind("#t_anfang", "anfang"); tBind("#t_intervall", "intervall"); tBind("#t_modus", "modus");
+  tBind("#t_start", "startBetrag"); tBind("#t_rate", "rate"); tBind("#t_laufzeit", "laufzeitMonate");
+  tBind("#t_kosten", "kosten"); tBind("#t_zinsModus", "zinsModus"); tBind("#t_zinsSatz", "zinsSatz");
+  tBind("#t_zinsBetrag", "zinsBetrag"); tBind("#t_ersteAmAnfang", "ersteAmAnfang", true);
+  if ($("#t_calc")) $("#t_calc").onclick = () => { syncTilgFromDOM(); renderTilgResult(); };
+  if ($("#t_fromfoko")) $("#t_fromfoko").onclick = () => {
+    const a = toUTC(tilg().anfang);
+    if (a == null) { alert("Bitte zuerst ein Anfangsdatum wählen."); return; }
+    const fk = computeAccount(tilg().anfang);
+    tilg().startBetrag = (Math.round(fk.gesamt * 100) / 100).toString();
+    renderTilgung();
+    toast("Startsaldo " + fmtEUR(fk.gesamt) + " aus Forderungskonto übernommen.");
+  };
+  if ($("#t_print")) $("#t_print").onclick = () => {
+    document.body.classList.add("print-tilgung");
+    window.print();
+    setTimeout(() => document.body.classList.remove("print-tilgung"), 400);
+  };
 }
 
 function posDateKey(p) {
@@ -1570,6 +1921,7 @@ function buildXML() {
     xml += "      " + e("Datum", p.datum) + "\n";
     xml += "      " + e("Zinstyp", p.zinsTyp) + "\n";
     xml += "      " + e("FreierZinssatz", p.freierZinssatz) + "\n";
+    xml += "      " + e("Zinsende", p.zinsEnde || "") + "\n";
     if (p.art === "wiederkehrend") {
       xml += "      <Wiederkehrend>\n";
       xml += "        " + e("Intervall", p.intervall || "monatlich") + "\n";
@@ -1607,6 +1959,16 @@ function buildXML() {
     xml += '    <Satz gueltigAb="' + esc(b.gueltigAb) + '" wert="' + esc(b.satz) + '"/>\n';
   });
   xml += "  </Basiszinssaetze>\n";
+  const tp = tilg();
+  xml += '  <Tilgungsplan intervall="' + esc(tp.intervall || "monatlich") + '" modus="' + esc(tp.modus || "rate") + '" zinsModus="' + esc(tp.zinsModus || "weiter") + '" ersteAmAnfang="' + (tp.ersteAmAnfang ? "1" : "0") + '">\n';
+  xml += "    " + e("Anfang", tp.anfang || "") + "\n";
+  xml += "    " + e("Startsaldo", tp.startBetrag || "") + "\n";
+  xml += "    " + e("Rate", tp.rate || "") + "\n";
+  xml += "    " + e("LaufzeitMonate", tp.laufzeitMonate || "") + "\n";
+  xml += "    " + e("Kosten", tp.kosten || "") + "\n";
+  xml += "    " + e("Zinssatz", tp.zinsSatz || "") + "\n";
+  xml += "    " + e("Zinsbetrag", tp.zinsBetrag || "") + "\n";
+  xml += "  </Tilgungsplan>\n";
   xml += "</Forderungskonto>\n";
   return xml;
 }
@@ -1647,6 +2009,7 @@ function parseOwnXML(root) {
       datum: g(p, "Datum"),
       zinsTyp: g(p, "Zinstyp") || "5pp",
       freierZinssatz: g(p, "FreierZinssatz"),
+      zinsEnde: g(p, "Zinsende"),
       intervall: w ? (g(w, "Intervall") || "monatlich") : "monatlich",
       tagModus: w ? (g(w, "TagModus") || "kalender") : "kalender",
       tagN: w ? (g(w, "TagN") || 1) : 1,
@@ -1676,6 +2039,23 @@ function parseOwnXML(root) {
   }
   const bq = root.querySelector("Basiszinssaetze");
   if (bq && bq.getAttribute("quelle")) st.basisQuelle = bq.getAttribute("quelle");
+
+  const tp = root.querySelector("Tilgungsplan");
+  if (tp) {
+    st.tilgung = {
+      anfang: g(tp, "Anfang"),
+      intervall: tp.getAttribute("intervall") || "monatlich",
+      modus: tp.getAttribute("modus") || "rate",
+      startBetrag: g(tp, "Startsaldo"),
+      rate: g(tp, "Rate"),
+      laufzeitMonate: g(tp, "LaufzeitMonate") || "12",
+      kosten: g(tp, "Kosten"),
+      zinsModus: tp.getAttribute("zinsModus") || "weiter",
+      zinsBetrag: g(tp, "Zinsbetrag"),
+      zinsSatz: g(tp, "Zinssatz"),
+      ersteAmAnfang: tp.getAttribute("ersteAmAnfang") === "1"
+    };
+  }
   return st;
 }
 
