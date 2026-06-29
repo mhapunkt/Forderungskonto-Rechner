@@ -1,0 +1,2064 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forderungskonto · Kanzlei-Tool</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/docx/8.5.0/docx.js"></script>
+<style>
+:root{
+  --paper:#f4f5f6; --card:#ffffff; --ink:#2c353d; --ink2:#3b454e; --muted:#7c858c;
+  --line:#e4e7e9; --line2:#f2f4f5; --brass:#ff6a1a; --brass2:#e85d10; --gold:#efbb20;
+  --ok:#2f6b4f; --haben:#2f6b4f; --danger:#8a2f33;
+  --warn-bg:#fdf3da; --warn-bd:#efbb20; --warn-tx:#7a5a0f;
+  --field:#ffffff;
+  --serif:"Open Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+  --sans:"Open Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:var(--sans);background:var(--paper);color:var(--ink);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--serif);font-weight:600;line-height:1.2;margin:0}
+a{color:var(--brass)}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit;font-size:14px;color:var(--ink)}
+
+/* ---------- Toolbar ---------- */
+.topbar{position:sticky;top:0;z-index:30;background:var(--ink);color:#eef1f3;
+  display:flex;align-items:center;gap:18px;padding:11px 22px;flex-wrap:wrap;
+  box-shadow:0 1px 0 rgba(0,0,0,.2)}
+.brand{display:flex;align-items:center;gap:13px;margin-right:auto}
+.brand-logo{height:34px;width:auto;background:#fff;padding:4px 8px;border-radius:6px;display:block}
+.brand .mark{font-family:var(--serif);font-size:18px;font-weight:700;letter-spacing:.2px}
+.brand .mark b{color:var(--brass);font-weight:700}
+.brand .sub{font-size:11px;color:#aeb6bc;letter-spacing:.1em;text-transform:uppercase}
+.tool-group{display:flex;gap:7px;flex-wrap:wrap}
+.tbtn{background:rgba(255,255,255,.07);color:#eef1f3;border:1px solid rgba(255,255,255,.16);
+  padding:7px 13px;border-radius:6px;font-size:13.5px;font-weight:500;transition:.13s}
+.tbtn:hover{background:rgba(255,255,255,.15)}
+.tbtn.primary{background:var(--brass);border-color:var(--brass2)}
+.tbtn.primary:hover{background:var(--brass2)}
+.tbtn.ghost{background:transparent}
+
+/* ---------- Tabs ---------- */
+.tabs{display:flex;gap:2px;padding:0 22px;background:var(--card);border-bottom:1px solid var(--line);
+  position:sticky;top:55px;z-index:20;overflow-x:auto}
+.tab{background:none;border:none;padding:14px 18px 12px;font-size:14.5px;font-weight:500;color:var(--ink2);
+  border-bottom:2.5px solid transparent;white-space:nowrap}
+.tab:hover{color:var(--ink)}
+.tab.active{color:var(--ink);border-bottom-color:var(--brass)}
+
+/* ---------- Layout ---------- */
+.wrap{max-width:1180px;margin:0 auto;padding:26px 22px 90px}
+.panel{display:none;animation:fade .2s ease}
+.panel.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.section-h{display:flex;align-items:center;justify-content:space-between;margin:0 0 16px}
+.section-h h2{font-size:22px;text-transform:uppercase;letter-spacing:.03em;font-weight:700}
+.section-h .hint{font-size:13px;color:var(--muted);max-width:46ch;text-align:right}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:22px 24px;margin-bottom:18px}
+.card > h3{font-size:13px;color:var(--ink);margin-bottom:16px;letter-spacing:.06em;text-transform:uppercase;font-weight:700;
+  padding-bottom:7px;border-bottom:2px solid var(--brass);display:inline-block}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px 20px}
+.grid-3{display:grid;grid-template-columns:1.4fr .8fr .9fr;gap:14px 18px}
+label{display:flex;flex-direction:column;gap:5px;font-size:12.5px;font-weight:500;color:var(--ink2)}
+input,select,textarea{background:var(--field);border:1px solid var(--line);border-radius:7px;padding:8px 10px;width:100%}
+textarea{resize:vertical;min-height:62px;line-height:1.4}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brass);box-shadow:0 0 0 3px rgba(255,106,26,.13)}
+select{cursor:pointer}
+
+/* ---------- Reihen (Positionen / Zahlungen) ---------- */
+.row-card{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--brass);
+  border-radius:9px;padding:16px 18px;margin-bottom:13px}
+.row-card:has(.haben){border-left-color:var(--haben)}
+.row-head{display:flex;align-items:center;gap:12px;margin-bottom:13px}
+.row-nr{font-family:var(--serif);font-weight:700;font-size:15px;color:var(--brass);
+  background:rgba(255,106,26,.09);padding:3px 11px;border-radius:5px}
+.row-nr.haben{color:var(--haben);background:rgba(47,107,79,.1)}
+.pill-select{width:auto;padding:5px 9px;font-size:13px;font-weight:500}
+.icon-btn{margin-left:auto;background:none;border:1px solid var(--line);color:var(--muted);
+  width:30px;height:30px;border-radius:6px;font-size:14px;line-height:1}
+.icon-btn:hover{border-color:var(--danger);color:var(--danger);background:rgba(138,47,51,.06)}
+.free-rate{transition:.12s}
+.empty{color:var(--muted);font-style:italic;padding:14px 2px;font-size:14px}
+.add-row{display:flex;justify-content:flex-start;gap:10px;margin-top:4px}
+.add-btn.ghost{background:transparent;color:var(--ink2);border:1px solid var(--line);border-radius:30px}
+.add-btn.ghost:hover{background:var(--line2)}
+.add-btn{background:var(--brass);color:#fff;border:none;padding:9px 20px;border-radius:30px;font-size:14px;font-weight:600;letter-spacing:.01em}
+.add-btn:hover{background:var(--brass2)}
+
+/* manuelle Verteilung */
+.mv-box{margin-top:13px;padding:12px 14px;background:var(--line2);border-radius:8px}
+.mv-title{font-size:12px;font-weight:600;color:var(--ink2);margin-bottom:9px;text-transform:uppercase;letter-spacing:.05em}
+.mv-row{display:flex;align-items:center;gap:12px;margin-bottom:7px;font-size:13.5px}
+.mv-row span{flex:1;color:var(--ink2)}
+.mv-row input{width:130px}
+.mv-note{margin-top:9px;font-size:12px;color:var(--muted);line-height:1.45;border-top:1px dashed var(--line);padding-top:8px}
+
+/* wiederkehrende Forderungen */
+.rk-block{margin-top:12px;padding:12px 14px;background:var(--line2);border-radius:8px}
+.rk-block + .rk-block{margin-top:8px}
+.rk-info{margin-top:9px;font-size:13px;color:var(--brass);font-weight:600;background:rgba(255,106,26,.07);padding:7px 11px;border-radius:6px}
+.rk-info.warn{color:#9a3412;background:rgba(154,52,18,.08)}
+.hint-cell{align-self:end;color:var(--muted);font-size:12.5px;font-style:italic}
+
+/* ---------- Basiszinssatz ---------- */
+.basis-summary{display:flex;gap:30px;flex-wrap:wrap;padding:18px 22px;background:var(--ink);color:#eef1f3;border-radius:10px;margin-bottom:18px}
+.basis-summary .bs{display:flex;flex-direction:column;gap:3px}
+.basis-summary .bs .bl{font-size:11.5px;color:#aeb6bc;text-transform:uppercase;letter-spacing:.07em}
+.basis-summary .bs .bv{font-family:var(--serif);font-size:24px;font-weight:600}
+.basis-summary .bs.accent .bv{color:var(--brass2)}
+table.basis{width:100%;border-collapse:collapse}
+table.basis th,table.basis td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line2);font-size:13.5px}
+table.basis th{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:600}
+table.basis input{padding:6px 8px}
+table.basis td input[data-bf="satz"]{width:90px}
+table.basis td:nth-child(3),table.basis td:nth-child(4){color:var(--ink2);font-variant-numeric:tabular-nums}
+.status{font-size:13px;margin-top:11px;padding:9px 12px;border-radius:7px}
+.status.ok{background:rgba(47,107,79,.1);color:var(--ok)}
+.status.warn{background:var(--warn-bg);color:var(--warn-tx);border:1px solid var(--warn-bd)}
+
+/* ---------- Kontoauszug ---------- */
+.auszug-sheet{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:34px 38px;margin-bottom:18px}
+.doc-letterhead{display:flex;justify-content:flex-end;border-bottom:3px solid var(--gold);padding-bottom:14px;margin-bottom:20px}
+.doc-logo{height:54px;width:auto}
+.auszug-sheet h1{font-size:23px;color:var(--ink);text-transform:uppercase;letter-spacing:.04em;font-weight:700}
+.auszug-sheet .doc-sub{color:var(--muted);font-size:13.5px;margin:4px 0 22px;letter-spacing:.02em}
+.ka-parties{display:grid;grid-template-columns:1fr 1fr;gap:26px;padding-bottom:18px;border-bottom:1.5px solid var(--ink);margin-bottom:14px}
+.ka-lbl{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.ka-val{font-family:var(--serif);font-size:17px;font-weight:600;margin-top:2px}
+.ka-sub{font-size:13px;color:var(--ink2);margin-top:2px}
+.ka-meta{display:flex;flex-wrap:wrap;gap:8px 32px;font-size:13.5px;color:var(--ink2);margin-bottom:24px}
+.ka-meta .ka-lbl{display:inline;margin-right:6px}
+
+.ka-block-h{font-family:var(--serif);font-size:13px;font-weight:700;color:var(--ink);margin:26px 0 12px;text-transform:uppercase;letter-spacing:.06em;padding-bottom:6px;border-bottom:2px solid var(--brass);display:inline-block}
+table.ledger{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+table.ledger th{background:var(--ink);color:#f1ede2;font-weight:500;padding:8px 9px;text-align:left;font-size:11.5px;letter-spacing:.02em}
+table.ledger th.r{text-align:right}
+table.ledger td{padding:7px 9px;border-bottom:1px solid var(--line2)}
+table.ledger td.r{text-align:right}
+table.ledger td.strong{font-weight:600}
+table.ledger td.sm{font-size:11.5px;color:var(--ink2)}
+table.ledger tr:nth-child(even) td{background:rgba(0,0,0,.013)}
+table.ledger tr.invalid td{opacity:.45}
+.staffel-pos{font-weight:600;color:var(--ink2);font-size:13px;margin:16px 0 5px}
+.staffel-pos:first-child{margin-top:2px}
+table.ledger.staffel{font-size:12px;margin-bottom:6px}
+table.ledger.staffel th{background:var(--ink2)}
+table.ledger.staffel tr.staffel-sum td{background:var(--line2);border-top:1.5px solid var(--brass);font-size:12px}
+table.ledger td.muted{color:var(--muted)}
+table.ledger.journal tr.jpay td{background:rgba(255,106,26,.05)}
+.jtag{display:inline-block;font-size:10px;font-weight:600;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:1px 5px;margin-left:4px;vertical-align:middle;white-space:nowrap}
+
+.sum-wrap{display:flex;justify-content:flex-end;margin-top:24px}
+table.sum-table{border-collapse:collapse;min-width:380px;font-variant-numeric:tabular-nums}
+table.sum-table td{padding:8px 14px;font-size:14px;border-bottom:1px solid var(--line2)}
+table.sum-table td.r{text-align:right;font-weight:500}
+table.sum-table tr.muted td{color:var(--muted);font-size:13px}
+table.sum-table tr.credit td{color:#166534;font-weight:600}
+table.sum-table tr.grand td{font-family:var(--serif);font-size:18px;font-weight:700;color:var(--ink);
+  border-top:2px solid var(--ink);border-bottom:none;padding-top:11px}
+
+.ka-warn{display:none;background:var(--warn-bg);border:1px solid var(--warn-bd);color:var(--warn-tx);
+  padding:13px 16px;border-radius:9px;margin-bottom:16px;font-size:13.5px;line-height:1.55}
+.method-note{margin-top:26px;padding-top:16px;border-top:1px solid var(--line);font-size:11.5px;color:var(--muted);line-height:1.6}
+
+/* ---------- Laden via URL ---------- */
+.url-load{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.url-load label{flex:1;min-width:280px}
+.url-load .add-btn{background:var(--brass)}
+.url-load .add-btn:hover{background:var(--brass2)}
+
+/* ---------- Toast ---------- */
+#toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--ink);color:#eef1f3;padding:12px 22px;border-radius:9px;font-size:14px;
+  opacity:0;pointer-events:none;transition:.25s;z-index:50;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+.callout{font-size:13px;color:var(--ink2);background:var(--line2);border-radius:8px;padding:12px 15px;margin-bottom:16px;line-height:1.55}
+.callout b{color:var(--ink)}
+
+@media (max-width:760px){
+  .grid-2,.grid-3{grid-template-columns:1fr}
+  .ka-parties{grid-template-columns:1fr}
+  .auszug-sheet{padding:22px 18px}
+  table.ledger{font-size:11.5px}
+  .wrap{padding:18px 13px 80px}
+}
+
+/* ---------- Druck / PDF ---------- */
+@media print{
+  @page{size:A4 portrait;margin:16mm 14mm}
+  .topbar,.tabs,#toast{display:none!important}
+  .wrap{max-width:none;padding:0}
+  .panel{display:none!important}
+  #panel-auszug{display:block!important}
+  body{background:#fff;font-size:11pt;color:#000}
+  .auszug-sheet{border:none;border-radius:0;padding:0;margin:0}
+  .auszug-sheet h1{font-size:18pt}
+  .ka-parties{border-bottom:1.5px solid #000}
+  table.ledger th{background:#222!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  table.ledger td{border-bottom:1px solid #bbb}
+  table.sum-table tr.grand td{border-top:2px solid #000}
+  table.ledger,table.sum-table{page-break-inside:auto}
+  tr{page-break-inside:avoid}
+  .ka-warn{display:none!important}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <img class="brand-logo" src="https://mhanwaelte.de/wp-content/uploads/2026/05/mh-dreizeiler-frei-1-300x160.png" alt="mh emmerich anwälte frankfurt">
+    <span class="mark">Forderungs<b>konto</b></span>
+    <span class="sub">Kanzlei-Tool</span>
+  </div>
+  <div class="tool-group">
+    <button class="tbtn ghost" id="btn-new">Neu</button>
+    <button class="tbtn ghost" id="btn-demo">Beispiel</button>
+    <button class="tbtn" id="btn-load">Laden …</button>
+    <button class="tbtn" id="btn-pdf">PDF</button>
+    <button class="tbtn" id="btn-word">Word</button>
+    <button class="tbtn primary" id="btn-save">Speichern (XML)</button>
+  </div>
+</div>
+<input type="file" id="file-input" accept=".xml,text/xml,application/xml" style="display:none">
+
+<nav class="tabs">
+  <button class="tab active" data-tab="kopf">Kopfdaten</button>
+  <button class="tab" data-tab="positionen">Forderungspositionen</button>
+  <button class="tab" data-tab="zahlungen">Zahlungen</button>
+  <button class="tab" data-tab="basis">Basiszinssatz</button>
+  <button class="tab" data-tab="auszug">Kontoauszug</button>
+</nav>
+
+<div class="wrap">
+
+  <!-- KOPFDATEN -->
+  <section class="panel active" id="panel-kopf">
+    <div class="section-h"><h2>Kopfdaten</h2></div>
+    <div class="card">
+      <h3>Gläubiger</h3>
+      <div class="grid-2">
+        <label>Name<input id="g_name" placeholder="Name / Firma"></label>
+        <label>Adresse<textarea id="g_adr" placeholder="Straße, PLZ Ort"></textarea></label>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Schuldner</h3>
+      <div class="grid-2">
+        <label>Name<input id="s_name" placeholder="Name / Firma"></label>
+        <label>Adresse<textarea id="s_adr" placeholder="Straße, PLZ Ort"></textarea></label>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Akte</h3>
+      <div class="grid-2">
+        <label>Aktenzeichen<input id="az" placeholder="z.B. 2024-0815"></label>
+        <label>Betreff<input id="betreff" placeholder="z.B. Werklohnforderung"></label>
+        <label>Stichtag der Berechnung<input type="date" id="stichtag"></label>
+      </div>
+    </div>
+  </section>
+
+  <!-- POSITIONEN -->
+  <section class="panel" id="panel-positionen">
+    <div class="section-h">
+      <h2>Forderungspositionen</h2>
+      <div class="hint">Jede Position erhält eine laufende Nummer. Das Datum gilt als Zinsbeginn (Verzugsbeginn).</div>
+    </div>
+    <div id="pos_list"></div>
+    <div class="add-row"><button class="add-btn" id="add_pos">+ Position hinzufügen</button><button class="add-btn ghost" id="sort_pos">↓ Nach Datum sortieren</button></div>
+  </section>
+
+  <!-- ZAHLUNGEN -->
+  <section class="panel" id="panel-zahlungen">
+    <div class="section-h">
+      <h2>Zahlungen</h2>
+      <div class="hint">Verrechnung gesetzlich nach § 367 BGB (Kosten → Zinsen → Hauptforderung, ältestes zuerst) oder manuell je Position.</div>
+    </div>
+    <div class="callout">Bei <b>manueller</b> Verrechnung wird der je Position eingetragene Betrag zuerst auf die offenen Zinsen dieser Position, dann auf deren Kapital angerechnet. Die Summe der Anteile sollte dem Zahlbetrag entsprechen (Abweichungen werden im Kontoauszug angezeigt).</div>
+    <div id="zahl_list"></div>
+    <div class="add-row"><button class="add-btn" id="add_zahl">+ Zahlung hinzufügen</button></div>
+  </section>
+
+  <!-- BASISZINSSATZ -->
+  <section class="panel" id="panel-basis">
+    <div class="section-h">
+      <h2>Basiszinssatz (§ 247 BGB)</h2>
+      <div class="hint">Anpassung halbjährlich zum 01.01. und 01.07. Werte werden zentral hinterlegt und für alle Positionen verwendet.</div>
+    </div>
+    <div class="basis-summary">
+      <div class="bs"><span class="bl">Basiszinssatz (Stichtag)</span><span class="bv" id="basis_aktuell">—</span></div>
+      <div class="bs accent"><span class="bl">+ 5 PP (§ 288 I)</span><span class="bv" id="basis_5">—</span></div>
+      <div class="bs accent"><span class="bl">+ 9 PP (§ 288 II)</span><span class="bv" id="basis_9">—</span></div>
+    </div>
+    <div class="card">
+      <div class="section-h" style="margin-bottom:12px">
+        <h3 style="margin:0">Hinterlegte Sätze</h3>
+        <button class="tbtn primary" id="fetch_basis" style="background:var(--brass);border-color:var(--brass2);color:#fff">Von Bundesbank aktualisieren</button>
+      </div>
+      <div id="basis_status"></div>
+      <p class="callout" style="margin:10px 0 14px">Die Werte sind bis <b>01.01.2025</b> vorbelegt. Spätere Halbjahre bitte prüfen und ergänzen. Ein automatischer Abruf von bundesbank.de gelingt im Browser oft nicht (CORS) – dann manuell eintragen. <span id="basis_quelle" style="display:block;margin-top:6px;color:var(--muted)"></span></p>
+      <table class="basis">
+        <thead><tr><th>gültig ab</th><th>Basiszinssatz</th><th>+ 5 PP</th><th>+ 9 PP</th><th></th></tr></thead>
+        <tbody id="basis_body"></tbody>
+      </table>
+      <div class="add-row" style="margin-top:12px"><button class="add-btn" id="add_basis">+ Satz hinzufügen</button></div>
+    </div>
+  </section>
+
+  <!-- KONTOAUSZUG -->
+  <section class="panel" id="panel-auszug">
+    <div class="section-h" style="margin-bottom:14px">
+      <h2>Kontoauszug</h2>
+      <div class="hint">Taggenaue Berechnung bis zum Stichtag. Für PDF: Button „PDF“ oben (Druckdialog).</div>
+    </div>
+    <div class="card" style="padding:16px 20px;margin-bottom:16px">
+      <div class="url-load">
+        <label>Laden über Link (z.B. SharePoint-Direktlink zur XML)
+          <input id="load-url" placeholder="https://… .xml">
+        </label>
+        <button class="add-btn" id="btn-load-url">Von Link laden</button>
+      </div>
+      <div id="url-status"></div>
+    </div>
+    <div class="auszug-sheet" id="auszug-sheet">
+      <div class="doc-letterhead">
+        <img class="doc-logo" src="https://mhanwaelte.de/wp-content/uploads/2026/05/mh-dreizeiler-frei-1-300x160.png" alt="mh emmerich anwälte frankfurt">
+      </div>
+      <h1>Forderungsaufstellung</h1>
+      <div class="doc-sub">Taggenaue Berechnung gem. §§ 247, 288, 367 BGB</div>
+      <div id="ka_warn" class="ka-warn"></div>
+      <div id="ka_kopf"></div>
+      <div class="ka-block-h">Forderungspositionen</div>
+      <div id="ka_positionen"></div>
+      <div id="ka_journal_h"><div class="ka-block-h">Buchungsjournal (chronologisch)</div></div>
+      <div id="ka_journal"></div>
+      <div id="ka_staffel_h"><div class="ka-block-h">Zinsstaffel (Etappenberechnung)</div></div>
+      <div id="ka_staffel"></div>
+      <div id="ka_zahlungen_h"><div class="ka-block-h">Zahlungen</div></div>
+      <div id="ka_zahlungen"></div>
+      <div class="sum-wrap"><div id="ka_summen"></div></div>
+      <div class="method-note">
+        Berechnungsmethode: taggenaue Zinsberechnung als Etappen-/Staffelrechnung (actual/actual, Zinsjahr 365 bzw. 366 Tage). Jede Etappe läuft bis zum nächsten Ereignis – Zahlung, Basiszinssatzänderung (§ 247 BGB, regelmäßig zum 01.01./01.07.) oder Entstehung einer weiteren Forderung – und wird mit dem im jeweiligen Zeitraum gültigen Zinssatz auf den dann offenen Saldo gerechnet (siehe Zinsstaffel). Gesetzliche Verrechnung gem. § 367 Abs. 1 BGB in der Reihenfolge Kosten – Zinsen – Hauptforderung (jeweils ältestes zuerst). Aufgelaufene Zinsen werden nicht weiter verzinst (Zinseszinsverbot, § 289 BGB). HF = Hauptforderung, KF = Kostenforderung.
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ============================================================
+   Forderungskonto – Kanzlei-Tool
+   Rechenkern, UI-Rendering, Import/Export
+   ============================================================ */
+"use strict";
+
+/* ---------- Hilfsfunktionen ---------- */
+const $  = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const uid = () => "id" + Math.random().toString(36).slice(2, 9);
+const num = (v) => { const n = parseFloat(String(v).replace(",", ".")); return isFinite(n) ? n : 0; };
+const MS_DAY = 86400000;
+
+function toUTC(iso) {
+  if (!iso) return null;
+  const [y, m, d] = iso.split("-").map(Number);
+  if (!y || !m || !d) return null;
+  return Date.UTC(y, m - 1, d);
+}
+function isoFromUTC(t) {
+  const d = new Date(t);
+  return d.getUTCFullYear() + "-" + String(d.getUTCMonth() + 1).padStart(2, "0") + "-" + String(d.getUTCDate()).padStart(2, "0");
+}
+function todayISO() {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+function fmtDate(iso) {
+  if (!iso) return "—";
+  const [y, m, d] = iso.split("-");
+  return d + "." + m + "." + y;
+}
+function fmtEUR(n) {
+  return (n || 0).toLocaleString("de-DE", { style: "currency", currency: "EUR" });
+}
+function fmtPct(n) {
+  return (n || 0).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 3 }) + " %";
+}
+function yearLen(year) {
+  const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+  return leap ? 366 : 365;
+}
+function daysBetween(a, b) { return Math.round((b - a) / MS_DAY); }
+
+/* ---------- Kalender: Feiertage, Werktage, Bankarbeitstage ----------
+   Feiertage: Hessen (Sitz Frankfurt). Bankarbeitstage: TARGET2-Kalender.
+   Werktag = Mo–Sa ohne gesetzl. Feiertag (§ 193 BGB-Kontext).
+   Bankarbeitstag = Mo–Fr ohne TARGET2-Feiertag. */
+function easterSunday(year) {
+  const a = year % 19, b = Math.floor(year / 100), c = year % 100;
+  const d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31);
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  return Date.UTC(year, month - 1, day);
+}
+const _holCache = {};
+function feiertageHessen(year) {
+  if (_holCache["H" + year]) return _holCache["H" + year];
+  const e = easterSunday(year), s = new Set();
+  const add = (t) => s.add(t);
+  add(Date.UTC(year, 0, 1));        // Neujahr
+  add(e - 2 * MS_DAY);              // Karfreitag
+  add(e + 1 * MS_DAY);             // Ostermontag
+  add(Date.UTC(year, 4, 1));        // Tag der Arbeit
+  add(e + 39 * MS_DAY);            // Christi Himmelfahrt
+  add(e + 50 * MS_DAY);            // Pfingstmontag
+  add(e + 60 * MS_DAY);            // Fronleichnam (Hessen)
+  add(Date.UTC(year, 9, 3));        // Tag der Deutschen Einheit
+  add(Date.UTC(year, 11, 25));      // 1. Weihnachtstag
+  add(Date.UTC(year, 11, 26));      // 2. Weihnachtstag
+  _holCache["H" + year] = s;
+  return s;
+}
+function feiertageTARGET2(year) {
+  if (_holCache["T" + year]) return _holCache["T" + year];
+  const e = easterSunday(year), s = new Set();
+  s.add(Date.UTC(year, 0, 1));      // Neujahr
+  s.add(e - 2 * MS_DAY);           // Karfreitag
+  s.add(e + 1 * MS_DAY);          // Ostermontag
+  s.add(Date.UTC(year, 4, 1));      // Tag der Arbeit
+  s.add(Date.UTC(year, 11, 25));    // 1. Weihnachtstag
+  s.add(Date.UTC(year, 11, 26));    // 2. Weihnachtstag
+  _holCache["T" + year] = s;
+  return s;
+}
+function weekday(t) { return new Date(t).getUTCDay(); } // 0=So .. 6=Sa
+function isWerktag(t) {
+  const wd = weekday(t);
+  if (wd === 0) return false;                       // Sonntag
+  return !feiertageHessen(new Date(t).getUTCFullYear()).has(t);
+}
+function isBankarbeitstag(t) {
+  const wd = weekday(t);
+  if (wd === 0 || wd === 6) return false;           // Wochenende
+  return !feiertageTARGET2(new Date(t).getUTCFullYear()).has(t);
+}
+
+/* Fälligkeitsregeln */
+function lastDayOfMonth(y, mIdx) { return new Date(Date.UTC(y, mIdx + 1, 0)).getUTCDate(); }
+function nthCalendarDayOfMonth(y, mIdx, n) {
+  return Date.UTC(y, mIdx, Math.min(Math.max(1, n), lastDayOfMonth(y, mIdx)));
+}
+function nthMatchingDayOfMonth(y, mIdx, n, pred) {
+  const last = lastDayOfMonth(y, mIdx);
+  let count = 0, match = null;
+  for (let d = 1; d <= last; d++) {
+    const t = Date.UTC(y, mIdx, d);
+    if (pred(t)) { count++; match = t; if (count === n) return t; }
+  }
+  return match; // n größer als verfügbar -> letzter passender Tag
+}
+function mondayOf(t) {
+  const wd = weekday(t);
+  const diff = wd === 0 ? 6 : wd - 1;
+  return t - diff * MS_DAY;
+}
+function nthMatchingDayOfWeek(monday, n, pred) {
+  let count = 0, match = null;
+  for (let i = 0; i < 7; i++) {
+    const t = monday + i * MS_DAY;
+    if (pred(t)) { count++; match = t; if (count === n) return t; }
+  }
+  return match;
+}
+function predFor(tagModus) {
+  return tagModus === "werktag" ? isWerktag
+       : tagModus === "bankarbeitstag" ? isBankarbeitstag
+       : null; // "kalender"
+}
+
+/* Erzeugt die konkreten Fälligkeitstermine einer wiederkehrenden Forderung
+   bis einschließlich 'bound' (UTC). */
+function expandRecurring(p, bound) {
+  const out = [];
+  const start = toUTC(p.start);
+  if (start == null || bound == null) return out;
+  const stop = p.ende ? Math.min(toUTC(p.ende), bound) : bound;
+  if (stop == null || stop < start) return out;
+  const n = Math.max(1, Math.round(num(p.tagN) || 1));
+  const pred = predFor(p.tagModus);
+  let guard = 0;
+
+  if (p.intervall === "woechentlich") {
+    let mon = mondayOf(start);
+    while (mon <= stop && guard++ < 6000) {
+      let due;
+      if (pred) due = nthMatchingDayOfWeek(mon, n, pred);
+      else { const wt = Math.min(Math.max(1, Math.round(num(p.wochentag) || 1)), 7); due = mon + (wt - 1) * MS_DAY; }
+      if (due != null && due >= start && due <= stop) out.push(due);
+      mon += 7 * MS_DAY;
+    }
+  } else { // monatlich
+    const sd = new Date(start);
+    let y = sd.getUTCFullYear(), m = sd.getUTCMonth();
+    while (guard++ < 6000) {
+      const firstOfMonth = Date.UTC(y, m, 1);
+      if (firstOfMonth > stop) break;
+      let due;
+      if (pred) due = nthMatchingDayOfMonth(y, m, n, pred);
+      else due = nthCalendarDayOfMonth(y, m, n);
+      if (due != null && due >= start && due <= stop) out.push(due);
+      m++; if (m > 11) { m = 0; y++; }
+    }
+  }
+  return out;
+}
+
+/* Flacht alle Positionen in konkrete (Einzel-)Forderungen auf.
+   Einmalige Positionen bleiben unverändert; wiederkehrende werden in
+   Fälligkeiten zerlegt. Stabile IDs: <parentId>#<k> für Verrechnungsbezug. */
+function expandAllPositions(list, bound) {
+  const out = [];
+  list.forEach((p, idx) => {
+    if (p.art === "wiederkehrend") {
+      const dues = expandRecurring(p, bound);
+      dues.forEach((due, k) => {
+        out.push({
+          id: p.id + "#" + k, parentId: p.id, occ: k + 1, parentNr: idx + 1,
+          typ: p.typ, bezeichnung: (p.bezeichnung || "Wiederkehrend") + " – fällig " + isoFromUTC(due),
+          betrag: p.betrag, datum: isoFromUTC(due),
+          zinsTyp: p.zinsTyp, freierZinssatz: p.freierZinssatz
+        });
+      });
+    } else {
+      out.push({
+        id: p.id, parentId: p.id, occ: 0, parentNr: idx + 1,
+        typ: p.typ, bezeichnung: p.bezeichnung, betrag: p.betrag, datum: p.datum,
+        zinsTyp: p.zinsTyp, freierZinssatz: p.freierZinssatz
+      });
+    }
+  });
+  return out;
+}
+function verrLabel(v) {
+  return v === "manuell" ? "manuell"
+       : v === "manuell_rest" ? "manuell + § 367 (Rest)"
+       : "§ 367 BGB";
+}
+
+/* ---------- Anwendungs-Status ---------- */
+let state = leerState();
+
+function leerState() {
+  return {
+    glaeubiger: { name: "", adresse: "" },
+    schuldner:  { name: "", adresse: "" },
+    aktenzeichen: "",
+    betreff: "",
+    stichtag: todayISO(),
+    positionen: [],
+    zahlungen: [],
+    basiszinssaetze: defaultBasis(),
+    basisQuelle: "Manuell hinterlegt (Werte gem. Bekanntmachung Deutsche Bundesbank, § 247 BGB)"
+  };
+}
+
+/* Historische Basiszinssätze (§ 247 BGB), Halbjahreswerte (01.01./01.07.).
+   Stand bis 01.01.2026 (H1/2026 unverändert 1,27 % gem. Vorgabe).
+   Spätere Halbjahre bitte vor Verwendung ergänzen/prüfen. */
+function defaultBasis() {
+  const raw = [
+    ["2009-01-01", 1.62], ["2009-07-01", 0.12],
+    ["2010-01-01", 0.12], ["2010-07-01", 0.12],
+    ["2011-01-01", 0.12], ["2011-07-01", 0.37],
+    ["2012-01-01", 0.12], ["2012-07-01", 0.12],
+    ["2013-01-01", -0.13], ["2013-07-01", -0.38],
+    ["2014-01-01", -0.63], ["2014-07-01", -0.73],
+    ["2015-01-01", -0.83], ["2015-07-01", -0.83],
+    ["2016-01-01", -0.83], ["2016-07-01", -0.88],
+    ["2017-01-01", -0.88], ["2017-07-01", -0.88],
+    ["2018-01-01", -0.88], ["2018-07-01", -0.88],
+    ["2019-01-01", -0.88], ["2019-07-01", -0.88],
+    ["2020-01-01", -0.88], ["2020-07-01", -0.88],
+    ["2021-01-01", -0.88], ["2021-07-01", -0.88],
+    ["2022-01-01", -0.88], ["2022-07-01", -0.88],
+    ["2023-01-01", 1.62], ["2023-07-01", 3.12],
+    ["2024-01-01", 3.62], ["2024-07-01", 3.37],
+    ["2025-01-01", 2.27], ["2025-07-01", 1.27],
+    ["2026-01-01", 1.27]
+  ];
+  return raw.map(([gueltigAb, satz]) => ({ id: uid(), gueltigAb, satz }));
+}
+
+/* ---------- Zinssatz-Auflösung ---------- */
+function basisSorted() {
+  return [...state.basiszinssaetze]
+    .filter((b) => b.gueltigAb)
+    .sort((a, b) => toUTC(a.gueltigAb) - toUTC(b.gueltigAb));
+}
+function getBasis(tUTC) {
+  const arr = basisSorted();
+  let val = null;
+  for (const b of arr) {
+    if (toUTC(b.gueltigAb) <= tUTC) val = num(b.satz);
+    else break;
+  }
+  return val; // null => kein Basiszinssatz hinterlegt
+}
+function effRate(pos, tUTC) {
+  switch (pos.zinsTyp) {
+    case "5pp": { const b = getBasis(tUTC); return b === null ? null : b + 5; }
+    case "9pp": { const b = getBasis(tUTC); return b === null ? null : b + 9; }
+    case "frei": return num(pos.freierZinssatz);
+    default: return 0; // unverzinslich
+  }
+}
+
+/* Nächster Segment-Grenztag nach t: frühester aus
+   – nächstem Jahreswechsel (für 365/366-Umstellung) und
+   – nächstem tatsächlichen Basiszins-Änderungstag aus der Tabelle.
+   Dadurch gilt jeder Basiszinssatz nur für sein eigenes Gültigkeitsintervall
+   (regelmäßig 01.01./01.07. gem. § 247 BGB, aber auch beliebige Tabellenstände). */
+function nextYearStart(t) {
+  return Date.UTC(new Date(t).getUTCFullYear() + 1, 0, 1);
+}
+function nextBasisChange(t) {
+  for (const b of basisSorted()) {
+    const bt = toUTC(b.gueltigAb);
+    if (bt != null && bt > t) return bt;
+  }
+  return Infinity;
+}
+function nextBreakpoint(pos, t) {
+  let bp = nextYearStart(t);
+  if (pos && (pos.zinsTyp === "5pp" || pos.zinsTyp === "9pp")) {
+    const nb = nextBasisChange(t);
+    if (nb < bp) bp = nb;
+  }
+  return bp;
+}
+
+/* Bis zu diesem Tag ist der letzte Tabellenwert regulär (für sein Halbjahr) gedeckt.
+   Zinsläufe darüber hinaus beruhen auf Fortschreibung -> Warnhinweis. */
+function lastBasisInfo() {
+  const arr = basisSorted();
+  if (!arr.length) return null;
+  const last = arr[arr.length - 1];
+  const t = toUTC(last.gueltigAb);
+  if (t == null) return null;
+  const y = new Date(t).getUTCFullYear();
+  const jul = Date.UTC(y, 6, 1), jan = Date.UTC(y + 1, 0, 1);
+  return { gedecktBis: t < jul ? jul : jan, satz: num(last.satz), ab: last.gueltigAb };
+}
+
+/* Taggenaue Zinsen auf 'principal' von 'from' bis 'to' (actual/actual, Zinsjahr 365/366).
+   Segmentiert an jedem Basiszins-Änderungstag und an Jahreswechseln;
+   je Segment gilt der zu Segmentbeginn gültige (Basis-)Zinssatz. */
+function accrueInterest(pos, principal, from, to, fehler, sink) {
+  if (!from || !to || to <= from) return 0;
+  const basisAbh = pos && (pos.zinsTyp === "5pp" || pos.zinsTyp === "9pp");
+  const lbi = basisAbh ? lastBasisInfo() : null;
+  let total = 0, a = from;
+  while (a < to) {
+    const bp = nextBreakpoint(pos, a);
+    const b = bp < to ? bp : to;
+    const rate = effRate(pos, a);
+    const days = daysBetween(a, b);
+    let seg = 0;
+    if (rate === null) {
+      if (fehler) fehler.kein = true; // Basiszinssatz fehlt
+    } else if (rate !== 0) {
+      if (fehler && lbi && a >= lbi.gedecktBis) fehler.extra = lbi; // fortgeschrieben
+      const yl = yearLen(new Date(a).getUTCFullYear());
+      seg = principal * (rate / 100) * days / yl;
+      total += seg;
+    }
+    if (sink && principal > 1e-9 && days > 0)
+      sink.push({ von: a, bis: b, saldo: principal, satz: rate, tage: days, zins: seg });
+    a = b;
+  }
+  return total;
+}
+
+/* ---------- Kontoberechnung ---------- */
+function computeAccount() {
+  const stichtag = toUTC(state.stichtag) || toUTC(todayISO());
+  const warn = [];
+  const fehler = { kein: false };
+
+  const expanded = expandAllPositions(state.positionen, stichtag);
+  // Chronologisch ordnen: Nummerierung, Tabelle, Journal und Staffel folgen dem Datum.
+  // Positionen ohne (gültiges) Datum ans Ende; bei gleichem Datum Eingabereihenfolge.
+  expanded.forEach((p, i) => { p._seq = i; });
+  expanded.sort((a, b) => {
+    const ta = toUTC(a.datum), tb = toUTC(b.datum);
+    if (ta == null && tb == null) return a._seq - b._seq;
+    if (ta == null) return 1;
+    if (tb == null) return -1;
+    return (ta - tb) || (a._seq - b._seq);
+  });
+  const positions = expanded.map((p, i) => ({
+    ref: p, idx: i, nr: i + 1,
+    typ: p.typ, datum: p.datum, bezeichnung: p.bezeichnung,
+    zinsTyp: p.zinsTyp, freierZinssatz: p.freierZinssatz,
+    betrag: num(p.betrag),
+    start: toUTC(p.datum),
+    out: 0, accrued: 0, interestTotal: 0,
+    principalPaid: 0, interestPaid: 0,
+    active: false, lastAccr: null, staffel: [],
+    valid: !!(p.datum && num(p.betrag) > 0)
+  }));
+
+  const payments = state.zahlungen.map((z, i) => ({
+    ref: z, idx: i, nr: i + 1,
+    datum: z.datum, bezeichnung: z.bezeichnung, betrag: num(z.betrag),
+    verrechnung: z.verrechnung, manuelleVerteilung: z.manuelleVerteilung || [],
+    date: toUTC(z.datum),
+    applied: [], // {posNr, zins, kapital}
+    valid: !!(z.datum && num(z.betrag) > 0)
+  }));
+
+  const events = [];
+  positions.forEach((p) => { if (p.valid && p.start <= stichtag) events.push({ date: p.start, type: "pos", p }); });
+  payments.forEach((z) => { if (z.valid && z.date <= stichtag) events.push({ date: z.date, type: "pay", z }); });
+  // Sortierung: nach Datum; bei Gleichstand erst Position (entsteht), dann Zahlung
+  events.sort((a, b) => (a.date - b.date) || (a.type === "pos" ? -1 : b.type === "pos" ? 1 : 0));
+
+  function accrueTo(toDate) {
+    positions.forEach((p) => {
+      if (p.active) {
+        if (p.out > 1e-9) {
+          const i = accrueInterest(p, p.out, p.lastAccr, toDate, fehler, p.staffel);
+          p.accrued += i; p.interestTotal += i;
+        }
+        p.lastAccr = toDate;
+      }
+    });
+  }
+
+  for (const ev of events) {
+    accrueTo(ev.date);
+    if (ev.type === "pos") {
+      ev.p.out = ev.p.betrag;
+      ev.p.active = true;
+      ev.p.lastAccr = ev.date;
+    } else {
+      applyPayment(ev.z, positions, warn);
+    }
+  }
+  accrueTo(stichtag);
+
+  // Ergebnis je Position
+  const rows = positions.map((p) => ({
+    nr: p.nr, typ: p.typ, datum: p.datum, bezeichnung: p.bezeichnung,
+    zinsTyp: p.zinsTyp, freierZinssatz: p.freierZinssatz,
+    betrag: p.betrag,
+    restKapital: p.out,
+    kapitalGetilgt: p.betrag - p.out,
+    zinsenAufgelaufen: p.interestTotal,
+    zinsenGetilgt: p.interestPaid,
+    restZinsen: p.accrued,
+    zwischensumme: p.out + p.accrued,
+    rateInfo: zinsInfo(p, stichtag),
+    staffel: p.staffel,
+    valid: p.valid
+  }));
+
+  const sumHaupt   = rows.filter(r => r.typ === "haupt").reduce((s, r) => s + r.restKapital, 0);
+  const sumKosten  = rows.filter(r => r.typ === "kosten").reduce((s, r) => s + r.restKapital, 0);
+  const sumZinsen  = rows.reduce((s, r) => s + r.restZinsen, 0);
+  const sumZahlung = payments.filter(z => z.valid && z.date <= stichtag).reduce((s, z) => s + z.betrag, 0);
+  const sumUrspr   = positions.filter(p => p.valid).reduce((s, p) => s + p.betrag, 0);
+  const offen      = sumHaupt + sumKosten + sumZinsen;
+  // Guthaben = Summe aller nicht verrechenbaren Überzahlungen
+  const guthaben   = payments.reduce((s, z) => s + (z.applied || []).reduce((t, a) => t + (a.ueberzahlung || 0), 0), 0);
+  const gesamt     = offen - guthaben; // Netto-Saldo; < 0 = Guthaben zugunsten Schuldner
+
+  if (fehler.kein) warn.push("Für einen Teil des Zinszeitraums ist kein Basiszinssatz hinterlegt – diese Tage wurden ohne Zins gerechnet. Bitte Basiszinssatz-Tabelle vervollständigen.");
+  if (fehler.extra) warn.push("Ab " + fmtDate(isoFromUTC(fehler.extra.gedecktBis)) + " ist kein aktueller Basiszinssatz hinterlegt; es wird der letzte bekannte Wert (" + fmtPct(fehler.extra.satz) + ", gültig ab " + fmtDate(fehler.extra.ab) + ") fortgeschrieben. Bitte den Basiszinssatz für das/die folgende(n) Halbjahr(e) ergänzen.");
+
+  return {
+    rows, payments,
+    sumHaupt, sumKosten, sumZinsen, sumZahlung, sumUrspr, offen, guthaben, gesamt,
+    stichtag: state.stichtag, warn
+  };
+}
+
+function zinsInfo(p, stichtag) {
+  switch (p.zinsTyp) {
+    case "5pp": { const r = effRate(p, stichtag); return "Basis + 5 PP" + (r === null ? "" : " (akt. " + fmtPct(r) + ")"); }
+    case "9pp": { const r = effRate(p, stichtag); return "Basis + 9 PP" + (r === null ? "" : " (akt. " + fmtPct(r) + ")"); }
+    case "frei": return "fest " + fmtPct(num(p.freierZinssatz));
+    default: return "unverzinslich";
+  }
+}
+
+/* Konsolidierte Zinsstaffel: gleich verzinsliche Forderungen werden zu einem
+   laufenden Saldo zusammengefasst; je Etappe (bis zum nächsten Ereignis –
+   Zahlung, Basiszinswechsel oder neue Forderung) eine Zeile.
+   Aufgebaut aus den Etappen-Segmenten der Einzelpositionen -> Summe stimmt
+   exakt mit der Positionsberechnung überein. */
+function ratenKey(row) { return row.zinsTyp === "frei" ? "frei:" + num(row.freierZinssatz) : row.zinsTyp; }
+function ratenLabel(row) {
+  switch (row.zinsTyp) {
+    case "5pp": return "Basiszins + 5 Prozentpunkte (§ 288 Abs. 1 BGB)";
+    case "9pp": return "Basiszins + 9 Prozentpunkte (§ 288 Abs. 2 BGB)";
+    case "frei": return "fester Zinssatz " + fmtPct(num(row.freierZinssatz));
+    default: return "verzinsliche Forderungen";
+  }
+}
+function buildKontostaffel(rows) {
+  const groups = {};
+  rows.forEach(row => {
+    if (!row.valid || row.zinsTyp === "keine" || !row.staffel || !row.staffel.length) return;
+    const k = ratenKey(row);
+    if (!groups[k]) groups[k] = { label: ratenLabel(row), segs: [] };
+    row.staffel.forEach(s => groups[k].segs.push(s));
+  });
+  const keys = Object.keys(groups);
+  const result = [];
+  keys.forEach(k => {
+    const segs = groups[k].segs;
+    const bps = new Set();
+    segs.forEach(s => { bps.add(s.von); bps.add(s.bis); });
+    const arr = [...bps].sort((a, b) => a - b);
+    const sub = [];
+    for (let i = 0; i < arr.length - 1; i++) {
+      const a = arr[i], b = arr[i + 1];
+      let saldo = 0, satz = null, cover = false;
+      for (const s of segs) { if (s.von <= a && s.bis >= b) { saldo += s.saldo; satz = s.satz; cover = true; } }
+      if (!cover || saldo <= 1e-9) continue;
+      const tage = daysBetween(a, b);
+      const zins = satz === null ? 0 : saldo * (satz / 100) * tage / yearLen(new Date(a).getUTCFullYear());
+      sub.push({ von: a, bis: b, saldo, satz, tage, zins });
+    }
+    // benachbarte Etappen mit gleichem Saldo & Satz zusammenfassen (z.B. Jahreswechsel)
+    const merged = [];
+    for (const x of sub) {
+      const last = merged[merged.length - 1];
+      if (last && Math.abs(last.saldo - x.saldo) < 0.005 && last.satz === x.satz) {
+        last.bis = x.bis; last.tage += x.tage; last.zins += x.zins;
+      } else merged.push({ ...x });
+    }
+    // Vorgang je Zeile aus Saldo-/Satz-Delta ableiten
+    merged.forEach((x, i) => {
+      if (i === 0) x.vorgang = "Beginn Verzinsung";
+      else {
+        const prev = merged[i - 1];
+        if (x.saldo > prev.saldo + 0.005) x.vorgang = "neue Forderung";
+        else if (x.saldo < prev.saldo - 0.005) x.vorgang = "nach Zahlung";
+        else x.vorgang = "Basiszinsänderung";
+      }
+    });
+    result.push({ label: groups[k].label, rows: merged, sum: merged.reduce((a, x) => a + x.zins, 0), multi: keys.length > 1 });
+  });
+  return result;
+}
+
+/* Aufschlüsselung einer Zahlung (je Position: Zins/Kapital) als Text */
+function aufString(applied) {
+  return (applied || []).map(a => {
+    if (a.ueberzahlung) return "Überzahlung " + fmtEUR(a.ueberzahlung);
+    const parts = [];
+    if (a.zins) parts.push("Zins " + fmtEUR(a.zins));
+    if (a.kapital) parts.push("Kapital " + fmtEUR(a.kapital));
+    return "Pos. " + a.posNr + ": " + (parts.join(", ") || "—");
+  }).join(" · ") || "—";
+}
+
+/* Chronologisches Buchungsjournal: alle Forderungen und Zahlungen in
+   Datumsreihenfolge, mit laufendem Kapitalsaldo und Zahlungs-Aufschlüsselung. */
+function buildJournal(r) {
+  const ev = [];
+  r.rows.forEach(row => {
+    if (!row.valid) return;
+    ev.push({ date: toUTC(row.datum), kind: "pos", nr: row.nr, typ: row.typ,
+      label: row.bezeichnung || (row.typ === "haupt" ? "Hauptforderung" : "Kostenforderung"),
+      betrag: row.betrag });
+  });
+  r.payments.forEach(z => {
+    if (!z.valid) return;
+    ev.push({ date: toUTC(z.datum), kind: "pay", nr: z.nr,
+      label: z.bezeichnung || "Zahlung", betrag: z.betrag,
+      applied: z.applied, verrechnung: z.verrechnung });
+  });
+  ev.sort((a, b) => (a.date - b.date) || (a.kind === "pos" ? -1 : b.kind === "pos" ? 1 : 0) || (a.nr - b.nr));
+  let saldo = 0;
+  return ev.map(e => {
+    if (e.kind === "pos") { saldo += e.betrag; return Object.assign({}, e, { saldo }); }
+    const kap = (e.applied || []).reduce((s, a) => s + (a.kapital || 0), 0);
+    const zins = (e.applied || []).reduce((s, a) => s + (a.zins || 0), 0);
+    saldo -= kap;
+    return Object.assign({}, e, { kapitalTilgung: kap, zinsTilgung: zins, saldo });
+  });
+}
+
+/* Zahlung verrechnen */
+function applyPayment(z, positions, warn) {
+  // Manuelle Zuordnung (mit oder ohne gesetzliche Restverrechnung)
+  if (z.verrechnung === "manuell" || z.verrechnung === "manuell_rest") {
+    let summe = 0, angewandt = 0;
+    for (const v of z.manuelleVerteilung) {
+      const p = positions.find(pp => pp.ref.id === v.positionId);
+      if (!p || !p.active) continue;
+      let betrag = num(v.betrag);
+      if (betrag <= 0) continue;
+      summe += betrag;
+      // innerhalb der Position: erst Zinsen dieser Position, dann Kapital (§ 367)
+      const zins = Math.min(betrag, p.accrued);
+      p.accrued -= zins; p.interestPaid += zins; betrag -= zins;
+      const kap = Math.min(betrag, p.out);
+      p.out -= kap; p.principalPaid += kap; betrag -= kap;
+      angewandt += zins + kap;
+      if (zins || kap) z.applied.push({ posNr: p.nr, zins, kapital: kap });
+    }
+
+    if (z.verrechnung === "manuell") {
+      if (Math.abs(summe - z.betrag) > 0.005)
+        warn.push("Zahlung „" + (z.bezeichnung || fmtDate(z.datum)) + "“: manuelle Verteilung (" + fmtEUR(summe) + ") weicht vom Zahlbetrag (" + fmtEUR(z.betrag) + ") ab.");
+      // nicht verrechneter Überhang = Guthaben
+      const rest = z.betrag - angewandt;
+      if (rest > 0.005) z.applied.push({ posNr: "—", zins: 0, kapital: 0, ueberzahlung: rest });
+      return;
+    }
+    // manuell_rest: verbleibenden Betrag gesetzlich nach § 367 BGB verteilen
+    let rest = z.betrag - angewandt;
+    if (rest < -0.005) {
+      warn.push("Zahlung „" + (z.bezeichnung || fmtDate(z.datum)) + "“: manuelle Zuordnung (" + fmtEUR(angewandt) + ") übersteigt den Zahlbetrag (" + fmtEUR(z.betrag) + ").");
+      return;
+    }
+    if (rest > 0.005) applyStatutory(rest, positions, z);
+    return;
+  }
+
+  // Rein gesetzlich (§ 367 BGB)
+  applyStatutory(z.betrag, positions, z);
+}
+
+/* Gesetzliche Tilgungsreihenfolge § 367 BGB: Kosten -> Zinsen -> Hauptforderung,
+   jeweils älteste Position zuerst. Bestehende z.applied-Einträge (aus manueller
+   Vorab-Zuordnung) werden je Position zusammengeführt. */
+function applyStatutory(rest, positions, z) {
+  const byDate = (a, b) => (a.start - b.start) || (a.idx - b.idx);
+  const aktiv = positions.filter(p => p.active);
+  const tilg = {};
+  (z.applied || []).forEach(a => {
+    if (a.posNr !== "—" && !a.ueberzahlung)
+      tilg[a.posNr] = { posNr: a.posNr, zins: a.zins || 0, kapital: a.kapital || 0 };
+  });
+  const buche = (p, art, betrag) => {
+    if (!tilg[p.nr]) tilg[p.nr] = { posNr: p.nr, zins: 0, kapital: 0 };
+    tilg[p.nr][art] += betrag;
+  };
+
+  // 1) Kosten-Kapital
+  for (const p of aktiv.filter(p => p.typ === "kosten").sort(byDate)) {
+    if (rest <= 0) break;
+    const x = Math.min(rest, p.out);
+    p.out -= x; p.principalPaid += x; rest -= x; if (x) buche(p, "kapital", x);
+  }
+  // 2) Zinsen (alle Positionen)
+  for (const p of aktiv.slice().sort(byDate)) {
+    if (rest <= 0) break;
+    const x = Math.min(rest, p.accrued);
+    p.accrued -= x; p.interestPaid += x; rest -= x; if (x) buche(p, "zins", x);
+  }
+  // 3) Hauptforderung-Kapital
+  for (const p of aktiv.filter(p => p.typ === "haupt").sort(byDate)) {
+    if (rest <= 0) break;
+    const x = Math.min(rest, p.out);
+    p.out -= x; p.principalPaid += x; rest -= x; if (x) buche(p, "kapital", x);
+  }
+  z.applied = Object.values(tilg);
+  if (rest > 0.005)
+    z.applied.push({ posNr: "—", zins: 0, kapital: 0, ueberzahlung: rest });
+}
+
+/* ============================================================
+   RENDERING
+   ============================================================ */
+function renderAll() {
+  renderKopf();
+  renderPositionen();
+  renderZahlungen();
+  renderBasis();
+  recompute();
+}
+
+function renderKopf() {
+  $("#g_name").value = state.glaeubiger.name;
+  $("#g_adr").value = state.glaeubiger.adresse;
+  $("#s_name").value = state.schuldner.name;
+  $("#s_adr").value = state.schuldner.adresse;
+  $("#az").value = state.aktenzeichen;
+  $("#betreff").value = state.betreff;
+  $("#stichtag").value = state.stichtag;
+}
+
+const ZINSTYP_LABEL = { "5pp": "Basis + 5 PP", "9pp": "Basis + 9 PP", "frei": "fester Zinssatz", "keine": "unverzinslich" };
+
+function renderPositionen() {
+  const wrap = $("#pos_list");
+  wrap.innerHTML = "";
+  if (!state.positionen.length) {
+    wrap.innerHTML = '<p class="empty">Noch keine Forderungsposition erfasst. Mit „Position hinzufügen“ beginnen.</p>';
+    return;
+  }
+  state.positionen.forEach((p, i) => {
+    const wdk = p.art === "wiederkehrend";
+    const card = document.createElement("div");
+    card.className = "row-card";
+    // Vorschau der Fälligkeiten
+    let vorschau = "";
+    if (wdk) {
+      const bound = p.ende ? toUTC(p.ende) : (toUTC(state.stichtag) || toUTC(todayISO()));
+      const dues = expandRecurring(p, bound);
+      if (dues.length) {
+        const first = fmtDate(isoFromUTC(dues[0])), last = fmtDate(isoFromUTC(dues[dues.length - 1]));
+        vorschau = `<div class="rk-info">${dues.length} Fälligkeit${dues.length === 1 ? "" : "en"} · ${first}${dues.length > 1 ? " – " + last : ""} · je ${fmtEUR(num(p.betrag))}</div>`;
+      } else {
+        vorschau = `<div class="rk-info warn">Keine Fälligkeit im Zeitraum – Start/Ende und Regel prüfen.</div>`;
+      }
+    }
+    const monatlich = (p.intervall || "monatlich") === "monatlich";
+    const istKalender = (p.tagModus || "kalender") === "kalender";
+    const wiederkehrendBlock = wdk ? `
+      <div class="grid-3 rk-block">
+        <label>Intervall
+          <select data-f="intervall" data-i="${i}">
+            <option value="monatlich">monatlich</option>
+            <option value="woechentlich">wöchentlich</option>
+          </select>
+        </label>
+        <label>Fälligkeit am
+          <select data-f="tagModus" data-i="${i}">
+            <option value="kalender">${monatlich ? "Kalendertag" : "Wochentag"}</option>
+            <option value="werktag">Werktag (Mo–Sa)</option>
+            <option value="bankarbeitstag">Bankarbeitstag (TARGET2)</option>
+          </select>
+        </label>
+        ${monatlich || !istKalender ? `
+        <label>${istKalender ? "Tag (1.–31.)" : "wievielter"}
+          <input data-f="tagN" data-i="${i}" inputmode="numeric" value="${p.tagN ?? 1}" placeholder="1">
+        </label>` : `
+        <label>Wochentag
+          <select data-f="wochentag" data-i="${i}">
+            <option value="1">Montag</option><option value="2">Dienstag</option>
+            <option value="3">Mittwoch</option><option value="4">Donnerstag</option>
+            <option value="5">Freitag</option><option value="6">Samstag</option>
+            <option value="7">Sonntag</option>
+          </select>
+        </label>`}
+      </div>
+      <div class="grid-2 rk-block">
+        <label>Beginn (erste Fälligkeit ab)<input type="date" data-f="start" data-i="${i}" value="${p.start || ""}"></label>
+        <label>Ende (optional, sonst bis Stichtag)<input type="date" data-f="ende" data-i="${i}" value="${p.ende || ""}"></label>
+      </div>
+      ${vorschau}` : "";
+
+    card.innerHTML = `
+      <div class="row-head">
+        <span class="row-nr">Pos. ${i + 1}</span>
+        <select data-f="typ" data-i="${i}" class="pill-select">
+          <option value="haupt">Hauptforderung</option>
+          <option value="kosten">Kostenforderung</option>
+        </select>
+        <select data-f="art" data-i="${i}" class="pill-select">
+          <option value="einmalig">einmalig</option>
+          <option value="wiederkehrend">wiederkehrend</option>
+        </select>
+        <button class="icon-btn" data-del-pos="${i}" title="Position löschen">✕</button>
+      </div>
+      <div class="grid-3">
+        <label>Bezeichnung<input data-f="bezeichnung" data-i="${i}" value="${esc(p.bezeichnung)}" placeholder="z.B. ${wdk ? "Mietzins / Rate" : "Werklohn Rechnung 2024-117"}"></label>
+        <label>${wdk ? "Betrag je Fälligkeit (€)" : "Betrag (€)"}<input data-f="betrag" data-i="${i}" inputmode="decimal" value="${p.betrag ?? ""}" placeholder="0,00"></label>
+        ${wdk ? `<label class="hint-cell">Verzinsung ab jeweiliger Fälligkeit</label>`
+              : `<label>Datum (Zinsbeginn)<input type="date" data-f="datum" data-i="${i}" value="${p.datum || ""}"></label>`}
+      </div>
+      ${wiederkehrendBlock}
+      <div class="grid-2">
+        <label>Verzinsung
+          <select data-f="zinsTyp" data-i="${i}">
+            <option value="5pp">Basis + 5 Prozentpunkte (§ 288 I BGB)</option>
+            <option value="9pp">Basis + 9 Prozentpunkte (§ 288 II BGB)</option>
+            <option value="frei">freier Zinssatz</option>
+            <option value="keine">unverzinslich</option>
+          </select>
+        </label>
+        <label class="free-rate" style="${p.zinsTyp === "frei" ? "" : "visibility:hidden"}">freier Satz (% p.a.)
+          <input data-f="freierZinssatz" data-i="${i}" inputmode="decimal" value="${p.freierZinssatz ?? ""}" placeholder="z.B. 4,00">
+        </label>
+      </div>`;
+    wrap.appendChild(card);
+    card.querySelector('[data-f="typ"]').value = p.typ;
+    card.querySelector('[data-f="zinsTyp"]').value = p.zinsTyp;
+    card.querySelector('[data-f="art"]').value = wdk ? "wiederkehrend" : "einmalig";
+    if (wdk) {
+      const iv = card.querySelector('[data-f="intervall"]'); if (iv) iv.value = p.intervall || "monatlich";
+      const tm = card.querySelector('[data-f="tagModus"]'); if (tm) tm.value = p.tagModus || "kalender";
+      const wt = card.querySelector('[data-f="wochentag"]'); if (wt) wt.value = String(p.wochentag || 1);
+    }
+  });
+}
+
+function renderZahlungen() {
+  const wrap = $("#zahl_list");
+  wrap.innerHTML = "";
+  if (!state.zahlungen.length) {
+    wrap.innerHTML = '<p class="empty">Noch keine Zahlung erfasst.</p>';
+    return;
+  }
+  const exp = expandAllPositions(state.positionen, toUTC(state.stichtag) || toUTC(todayISO()));
+  state.zahlungen.forEach((z, i) => {
+    const card = document.createElement("div");
+    card.className = "row-card";
+    let manuellHtml = "";
+    if (z.verrechnung === "manuell" || z.verrechnung === "manuell_rest") {
+      const rows = exp.map((p) => {
+        const v = (z.manuelleVerteilung || []).find(x => x.positionId === p.id);
+        const label = (esc(p.bezeichnung) || ZINSTYP_LABEL[p.typ] || p.typ) +
+          (p.occ ? "" : "") + " · " + fmtDate(p.datum) + (p.typ === "kosten" ? " (KF)" : " (HF)");
+        return `<div class="mv-row">
+            <span>Pos. ${p.parentNr}${p.occ ? "." + p.occ : ""} – ${label}</span>
+            <input data-mv="${i}" data-pid="${p.id}" inputmode="decimal" placeholder="0,00" value="${v ? v.betrag : ""}">
+          </div>`;
+      }).join("");
+      const hinweis = z.verrechnung === "manuell_rest"
+        ? '<div class="mv-note">Den hier nicht zugeordneten Restbetrag verteilt das Programm automatisch nach § 367 BGB (Kosten → Zinsen → Hauptforderung).</div>'
+        : '<div class="mv-note">Die Summe der Zuordnungen sollte dem Zahlbetrag entsprechen.</div>';
+      manuellHtml = `<div class="mv-box">
+          <div class="mv-title">Zuordnung auf einzelne Forderungen (€)</div>
+          ${rows || '<p class="empty">Keine Positionen vorhanden.</p>'}
+          ${hinweis}
+        </div>`;
+    }
+    card.innerHTML = `
+      <div class="row-head">
+        <span class="row-nr haben">Zahlung ${i + 1}</span>
+        <button class="icon-btn" data-del-zahl="${i}" title="Zahlung löschen">✕</button>
+      </div>
+      <div class="grid-3">
+        <label>Bezeichnung<input data-zf="bezeichnung" data-i="${i}" value="${esc(z.bezeichnung)}" placeholder="z.B. Teilzahlung"></label>
+        <label>Betrag (€)<input data-zf="betrag" data-i="${i}" inputmode="decimal" value="${z.betrag ?? ""}" placeholder="0,00"></label>
+        <label>Datum<input type="date" data-zf="datum" data-i="${i}" value="${z.datum || ""}"></label>
+      </div>
+      <label>Verrechnung
+        <select data-zf="verrechnung" data-i="${i}">
+          <option value="gesetzlich">gesetzlich (§ 367 BGB: Kosten → Zinsen → Hauptforderung)</option>
+          <option value="manuell">manuell auf bestimmte Forderungen</option>
+          <option value="manuell_rest">manuell + Rest nach § 367 BGB</option>
+        </select>
+      </label>
+      ${manuellHtml}`;
+    wrap.appendChild(card);
+    card.querySelector('[data-zf="verrechnung"]').value = z.verrechnung;
+  });
+}
+
+function renderBasis() {
+  const tb = $("#basis_body");
+  tb.innerHTML = "";
+  basisSorted().forEach((b) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><input type="date" data-bf="gueltigAb" data-id="${b.id}" value="${b.gueltigAb}"></td>
+      <td><input inputmode="decimal" data-bf="satz" data-id="${b.id}" value="${b.satz}"> %</td>
+      <td>${fmtPct(num(b.satz) + 5)}</td>
+      <td>${fmtPct(num(b.satz) + 9)}</td>
+      <td><button class="icon-btn" data-del-basis="${b.id}" title="Eintrag löschen">✕</button></td>`;
+    tb.appendChild(tr);
+  });
+  const akt = getBasis(toUTC(state.stichtag) || toUTC(todayISO()));
+  $("#basis_aktuell").textContent = akt === null ? "kein Wert hinterlegt" : fmtPct(akt);
+  $("#basis_5").textContent = akt === null ? "—" : fmtPct(akt + 5);
+  $("#basis_9").textContent = akt === null ? "—" : fmtPct(akt + 9);
+  $("#basis_quelle").textContent = state.basisQuelle || "";
+}
+
+/* ---------- Kontoauszug ---------- */
+function recompute() {
+  const r = computeAccount();
+  renderKontoauszug(r);
+  lastResult = r;
+}
+let lastResult = null;
+
+function renderKontoauszug(r) {
+  // Warnungen
+  const w = $("#ka_warn");
+  if (r.warn.length) {
+    w.style.display = "block";
+    w.innerHTML = r.warn.map(x => "⚠ " + esc(x)).join("<br>");
+  } else { w.style.display = "none"; w.innerHTML = ""; }
+
+  // Kopf
+  $("#ka_kopf").innerHTML = `
+    <div class="ka-parties">
+      <div><span class="ka-lbl">Gläubiger</span><div class="ka-val">${esc(state.glaeubiger.name) || "—"}</div><div class="ka-sub">${nl(esc(state.glaeubiger.adresse))}</div></div>
+      <div><span class="ka-lbl">Schuldner</span><div class="ka-val">${esc(state.schuldner.name) || "—"}</div><div class="ka-sub">${nl(esc(state.schuldner.adresse))}</div></div>
+    </div>
+    <div class="ka-meta">
+      <div><span class="ka-lbl">Aktenzeichen</span> ${esc(state.aktenzeichen) || "—"}</div>
+      <div><span class="ka-lbl">Betreff</span> ${esc(state.betreff) || "—"}</div>
+      <div><span class="ka-lbl">Stichtag</span> ${fmtDate(r.stichtag)}</div>
+    </div>`;
+
+  // Positionen
+  let pos = `<table class="ledger"><thead><tr>
+      <th>Nr.</th><th>Art</th><th>Datum</th><th>Bezeichnung</th>
+      <th class="r">Forderung</th><th>Verzinsung</th>
+      <th class="r">Zinsen aufgel.</th><th class="r">getilgt (Kap.)</th>
+      <th class="r">Restkapital</th><th class="r">Restzinsen</th><th class="r">Zwischensumme</th>
+    </tr></thead><tbody>`;
+  r.rows.forEach((row) => {
+    pos += `<tr${row.valid ? "" : ' class="invalid"'}>
+      <td>${row.nr}</td>
+      <td>${row.typ === "haupt" ? "HF" : "KF"}</td>
+      <td>${fmtDate(row.datum)}</td>
+      <td>${esc(row.bezeichnung) || "—"}</td>
+      <td class="r">${fmtEUR(row.betrag)}</td>
+      <td class="sm">${esc(row.rateInfo)}</td>
+      <td class="r">${fmtEUR(row.zinsenAufgelaufen)}</td>
+      <td class="r">${fmtEUR(row.kapitalGetilgt)}</td>
+      <td class="r">${fmtEUR(row.restKapital)}</td>
+      <td class="r">${fmtEUR(row.restZinsen)}</td>
+      <td class="r strong">${fmtEUR(row.zwischensumme)}</td>
+    </tr>`;
+  });
+  pos += "</tbody></table>";
+  $("#ka_positionen").innerHTML = r.rows.length ? pos : '<p class="empty">Keine Positionen.</p>';
+
+  // Buchungsjournal – chronologisch (Forderungen + Zahlungen, laufender Kapitalsaldo)
+  const journal = buildJournal(r);
+  if (journal.length) {
+    let jh = `<table class="ledger journal"><thead><tr>
+        <th>Datum</th><th>Vorgang</th><th class="r">Forderung</th><th class="r">Zahlung</th><th>Aufschlüsselung</th><th class="r">Saldo Kapital</th>
+      </tr></thead><tbody>`;
+    journal.forEach((e) => {
+      if (e.kind === "pos") {
+        jh += `<tr>
+          <td>${fmtDate(isoFromUTC(e.date))}</td>
+          <td>Pos. ${e.nr} – ${esc(e.label)} <span class="jtag">${e.typ === "haupt" ? "HF" : "KF"}</span></td>
+          <td class="r">${fmtEUR(e.betrag)}</td>
+          <td class="r muted">—</td>
+          <td class="sm">Forderung entstanden</td>
+          <td class="r">${fmtEUR(e.saldo)}</td>
+        </tr>`;
+      } else {
+        jh += `<tr class="jpay">
+          <td>${fmtDate(isoFromUTC(e.date))}</td>
+          <td>Zahlung ${e.nr} – ${esc(e.label)} <span class="jtag">${verrLabel(e.verrechnung)}</span></td>
+          <td class="r muted">—</td>
+          <td class="r">${fmtEUR(e.betrag)}</td>
+          <td class="sm">${esc(aufString(e.applied))}</td>
+          <td class="r">${fmtEUR(e.saldo)}</td>
+        </tr>`;
+      }
+    });
+    jh += `</tbody></table>`;
+    $("#ka_journal").innerHTML = jh;
+    $("#ka_journal_h").style.display = "";
+  } else {
+    $("#ka_journal").innerHTML = "";
+    $("#ka_journal_h").style.display = "none";
+  }
+
+  // Zinsstaffel – konsolidiert je Zinsgruppe (laufender Saldo, Etappen)
+  const ks = buildKontostaffel(r.rows);
+  if (ks.length) {
+    let sh = "";
+    ks.forEach((g) => {
+      if (g.multi) sh += `<div class="staffel-pos">${esc(g.label)}</div>`;
+      sh += `<table class="ledger staffel"><thead><tr>
+          <th>Zeitraum</th><th>Vorgang</th><th class="r">Saldo</th><th class="r">Zinssatz</th><th class="r">Zinstage</th><th class="r">Zinsen</th>
+        </tr></thead><tbody>`;
+      g.rows.forEach((s) => {
+        sh += `<tr>
+          <td>${fmtDate(isoFromUTC(s.von))} – ${fmtDate(isoFromUTC(s.bis - MS_DAY))}</td>
+          <td class="sm">${s.vorgang}</td>
+          <td class="r">${fmtEUR(s.saldo)}</td>
+          <td class="r">${s.satz === null ? "—" : fmtPct(s.satz)}</td>
+          <td class="r">${s.tage}</td>
+          <td class="r">${fmtEUR(s.zins)}</td>
+        </tr>`;
+      });
+      sh += `<tr class="staffel-sum"><td colspan="5">Summe Zinsen${g.multi ? " (Gruppe)" : ""}</td><td class="r strong">${fmtEUR(g.sum)}</td></tr>`;
+      sh += `</tbody></table>`;
+    });
+    $("#ka_staffel").innerHTML = sh;
+    $("#ka_staffel_h").style.display = "";
+  } else {
+    $("#ka_staffel").innerHTML = "";
+    $("#ka_staffel_h").style.display = "none";
+  }
+
+  // Zahlungen
+  if (r.payments.filter(z => z.valid).length) {
+    let zh = `<table class="ledger"><thead><tr>
+        <th>Nr.</th><th>Datum</th><th>Bezeichnung</th><th class="r">Betrag</th><th>Verrechnung</th><th>Aufschlüsselung</th>
+      </tr></thead><tbody>`;
+    r.payments.filter(z => z.valid).forEach((z) => {
+      const auf = (z.applied || []).map(a => {
+        if (a.ueberzahlung) return "Überzahlung " + fmtEUR(a.ueberzahlung);
+        const parts = [];
+        if (a.zins) parts.push("Zins " + fmtEUR(a.zins));
+        if (a.kapital) parts.push("Kapital " + fmtEUR(a.kapital));
+        return "Pos. " + a.posNr + ": " + (parts.join(", ") || "—");
+      }).join(" · ") || "—";
+      zh += `<tr>
+        <td>${z.nr}</td><td>${fmtDate(z.datum)}</td><td>${esc(z.bezeichnung) || "—"}</td>
+        <td class="r">${fmtEUR(z.betrag)}</td>
+        <td class="sm">${verrLabel(z.verrechnung)}</td>
+        <td class="sm">${auf}</td>
+      </tr>`;
+    });
+    zh += "</tbody></table>";
+    $("#ka_zahlungen").innerHTML = zh;
+    $("#ka_zahlungen_h").style.display = "";
+  } else {
+    $("#ka_zahlungen").innerHTML = "";
+    $("#ka_zahlungen_h").style.display = "none";
+  }
+
+  // Summen
+  const hatGuthaben = r.guthaben > 0.005;
+  const netCredit = r.gesamt < -0.005; // Saldo zugunsten Schuldner
+  $("#ka_summen").innerHTML = `
+    <table class="sum-table">
+      <tr><td>Hauptforderungen (offen)</td><td class="r">${fmtEUR(r.sumHaupt)}</td></tr>
+      <tr><td>Kostenforderungen (offen)</td><td class="r">${fmtEUR(r.sumKosten)}</td></tr>
+      <tr><td>Zinsen (aufgelaufen, offen)</td><td class="r">${fmtEUR(r.sumZinsen)}</td></tr>
+      ${hatGuthaben ? `<tr><td>Summe offene Forderungen</td><td class="r">${fmtEUR(r.offen)}</td></tr>
+      <tr class="credit"><td>abzüglich Guthaben (Überzahlung)</td><td class="r">− ${fmtEUR(r.guthaben)}</td></tr>` : ""}
+      <tr class="muted"><td>nachrichtlich: Summe Zahlungen</td><td class="r">${fmtEUR(r.sumZahlung)}</td></tr>
+      <tr class="grand"><td>${netCredit ? "Guthaben zugunsten Schuldner zum " + fmtDate(r.stichtag) : "Gesamtsaldo zum " + fmtDate(r.stichtag)}</td><td class="r">${fmtEUR(Math.abs(r.gesamt))}</td></tr>
+    </table>`;
+}
+
+/* ---------- kleine Helfer ---------- */
+function esc(s) { return (s == null ? "" : String(s)).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+function nl(s) { return (s || "").replace(/\n/g, "<br>"); }
+
+/* ============================================================
+   EVENT-BINDINGS
+   ============================================================ */
+function bindEvents() {
+  // Kopfdaten
+  $("#g_name").oninput = e => { state.glaeubiger.name = e.target.value; recompute(); };
+  $("#g_adr").oninput  = e => { state.glaeubiger.adresse = e.target.value; recompute(); };
+  $("#s_name").oninput = e => { state.schuldner.name = e.target.value; recompute(); };
+  $("#s_adr").oninput  = e => { state.schuldner.adresse = e.target.value; recompute(); };
+  $("#az").oninput     = e => { state.aktenzeichen = e.target.value; recompute(); };
+  $("#betreff").oninput= e => { state.betreff = e.target.value; recompute(); };
+  $("#stichtag").onchange = e => { state.stichtag = e.target.value; renderBasis(); recompute(); };
+
+  // Positionen
+  $("#add_pos").onclick = () => {
+    state.positionen.push({ id: uid(), art: "einmalig", typ: "haupt", bezeichnung: "", betrag: "", datum: "", zinsTyp: "5pp", freierZinssatz: "", intervall: "monatlich", tagModus: "kalender", tagN: 1, wochentag: 1, start: "", ende: "" });
+    renderPositionen(); recompute();
+  };
+  $("#sort_pos").onclick = () => { sortPositionenByDate(); cleanupManuell(); renderPositionen(); renderZahlungen(); recompute(); toast("Positionen nach Datum sortiert."); };
+  $("#pos_list").addEventListener("input", (e) => {
+    const t = e.target;
+    if (t.dataset.f != null) {
+      const i = +t.dataset.i, f = t.dataset.f;
+      state.positionen[i][f] = t.value;
+      // Felder, die die Maske umbauen
+      if (f === "zinsTyp" || f === "art" || f === "intervall" || f === "tagModus") renderPositionen();
+      recompute();
+    }
+  });
+  $("#pos_list").addEventListener("change", (e) => {
+    const t = e.target;
+    if (["typ", "datum", "start", "ende", "wochentag", "art", "intervall", "tagModus"].includes(t.dataset.f)) { renderPositionen(); recompute(); }
+  });
+  $("#pos_list").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-del-pos]");
+    if (b) { state.positionen.splice(+b.dataset.delPos, 1); cleanupManuell(); renderPositionen(); renderZahlungen(); recompute(); }
+  });
+
+  // Zahlungen
+  $("#add_zahl").onclick = () => {
+    state.zahlungen.push({ id: uid(), bezeichnung: "", betrag: "", datum: "", verrechnung: "gesetzlich", manuelleVerteilung: [] });
+    renderZahlungen(); recompute();
+  };
+  $("#zahl_list").addEventListener("input", (e) => {
+    const t = e.target;
+    if (t.dataset.zf != null) {
+      const i = +t.dataset.i, f = t.dataset.zf;
+      state.zahlungen[i][f] = t.value;
+      if (f === "verrechnung") renderZahlungen();
+      recompute();
+    } else if (t.dataset.mv != null) {
+      const i = +t.dataset.mv, pid = t.dataset.pid;
+      const z = state.zahlungen[i];
+      z.manuelleVerteilung = z.manuelleVerteilung || [];
+      let v = z.manuelleVerteilung.find(x => x.positionId === pid);
+      if (!v) { v = { positionId: pid, betrag: "" }; z.manuelleVerteilung.push(v); }
+      v.betrag = t.value;
+      recompute();
+    }
+  });
+  $("#zahl_list").addEventListener("change", (e) => {
+    if (e.target.dataset.zf === "datum") recompute();
+  });
+  $("#zahl_list").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-del-zahl]");
+    if (b) { state.zahlungen.splice(+b.dataset.delZahl, 1); renderZahlungen(); recompute(); }
+  });
+
+  // Basiszinssatz
+  $("#add_basis").onclick = () => {
+    state.basiszinssaetze.push({ id: uid(), gueltigAb: "", satz: 0 });
+    renderBasis();
+  };
+  $("#basis_body").addEventListener("input", (e) => {
+    const t = e.target;
+    if (t.dataset.bf != null) {
+      const b = state.basiszinssaetze.find(x => x.id === t.dataset.id);
+      if (b) { b[t.dataset.bf] = t.dataset.bf === "satz" ? t.value : t.value; recompute(); }
+    }
+  });
+  $("#basis_body").addEventListener("change", (e) => {
+    if (e.target.dataset.bf === "gueltigAb") { renderBasis(); recompute(); }
+  });
+  $("#basis_body").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-del-basis]");
+    if (b) { state.basiszinssaetze = state.basiszinssaetze.filter(x => x.id !== b.dataset.delBasis); renderBasis(); recompute(); }
+  });
+  $("#fetch_basis").onclick = fetchBundesbank;
+
+  // Tabs
+  $$(".tab").forEach(tab => tab.onclick = () => {
+    $$(".tab").forEach(t => t.classList.remove("active"));
+    $$(".panel").forEach(p => p.classList.remove("active"));
+    tab.classList.add("active");
+    $("#panel-" + tab.dataset.tab).classList.add("active");
+  });
+
+  // Toolbar
+  $("#btn-save").onclick = saveXML;
+  $("#btn-load").onclick = () => $("#file-input").click();
+  $("#file-input").onchange = (e) => { if (e.target.files[0]) loadXMLFile(e.target.files[0]); };
+  $("#btn-load-url").onclick = loadFromURL;
+  $("#btn-pdf").onclick = () => window.print();
+  $("#btn-word").onclick = exportWord;
+  $("#btn-new").onclick = () => {
+    if (confirm("Neues, leeres Forderungskonto anlegen? Nicht gespeicherte Daten gehen verloren.")) {
+      state = leerState(); renderAll();
+    }
+  };
+  $("#btn-demo").onclick = loadDemo;
+}
+
+function posDateKey(p) {
+  const iso = p.art === "wiederkehrend" ? p.start : p.datum;
+  return toUTC(iso);
+}
+function sortPositionenByDate() {
+  state.positionen.sort((a, b) => {
+    const ta = posDateKey(a), tb = posDateKey(b);
+    if (ta == null && tb == null) return 0;
+    if (ta == null) return 1;
+    if (tb == null) return -1;
+    return ta - tb;
+  });
+}
+
+function cleanupManuell() {
+  const exp = expandAllPositions(state.positionen, toUTC(state.stichtag) || toUTC(todayISO()));
+  const ids = new Set(exp.map(p => p.id));
+  state.positionen.forEach(p => ids.add(p.id)); // Eltern-IDs ebenfalls behalten
+  state.zahlungen.forEach(z => {
+    if (z.manuelleVerteilung) z.manuelleVerteilung = z.manuelleVerteilung.filter(v => ids.has(v.positionId));
+  });
+}
+
+/* ============================================================
+   BUNDESBANK – automatischer Abruf (best effort)
+   ============================================================ */
+async function fetchBundesbank() {
+  const btn = $("#fetch_basis");
+  const old = btn.textContent;
+  btn.textContent = "Rufe ab …"; btn.disabled = true;
+  const status = $("#basis_status");
+  status.textContent = "";
+  // Offizielle Zeitreihe Basiszinssatz (SDMX-CSV). Direktabruf scheitert i.d.R. an CORS.
+  const urls = [
+    "https://api.statistiken.bundesbank.de/rest/download/BBSIS/D.I.ZAR.ZI.EUR.S1311.B.A604._Z.R.A.A._Z._Z.A?format=csv&lang=de"
+  ];
+  let ok = false;
+  for (const u of urls) {
+    try {
+      const res = await fetch(u, { headers: { Accept: "text/csv" } });
+      if (!res.ok) continue;
+      const txt = await res.text();
+      const parsed = parseBundesbankCSV(txt);
+      if (parsed.length) {
+        mergeBasis(parsed);
+        state.basisQuelle = "Automatischer Abruf Deutsche Bundesbank am " + fmtDate(todayISO());
+        renderBasis(); recompute();
+        status.className = "status ok";
+        status.textContent = "Abruf erfolgreich – " + parsed.length + " Werte aktualisiert.";
+        ok = true; break;
+      }
+    } catch (e) { /* CORS o.ä. */ }
+  }
+  if (!ok) {
+    status.className = "status warn";
+    status.innerHTML = "Automatischer Abruf nicht möglich (Browser-Sicherheit/CORS gegenüber bundesbank.de). " +
+      'Aktuelle Werte manuell unter <a href="https://www.bundesbank.de/de/bundesbank/organisation/agb-und-regelungen/basiszinssatz-607820" target="_blank" rel="noopener">bundesbank.de</a> prüfen und unten eintragen.';
+  }
+  btn.textContent = old; btn.disabled = false;
+}
+
+function parseBundesbankCSV(txt) {
+  const out = [];
+  txt.split(/\r?\n/).forEach(line => {
+    const m = line.match(/^\s*"?(\d{4}-\d{2}-\d{2})"?\s*[;,]\s*"?(-?\d+[.,]?\d*)"?/);
+    if (m) {
+      const d = m[1], v = parseFloat(m[2].replace(",", "."));
+      if (isFinite(v)) out.push({ gueltigAb: d, satz: v });
+    }
+  });
+  return out;
+}
+
+function mergeBasis(arr) {
+  const map = new Map(state.basiszinssaetze.map(b => [b.gueltigAb, b]));
+  arr.forEach(n => {
+    if (map.has(n.gueltigAb)) map.get(n.gueltigAb).satz = n.satz;
+    else state.basiszinssaetze.push({ id: uid(), gueltigAb: n.gueltigAb, satz: n.satz });
+  });
+}
+
+/* ============================================================
+   XML – Speichern / Laden (LECARE-orientiertes Format)
+   ============================================================ */
+function buildXML() {
+  const e = (tag, val) => "<" + tag + ">" + esc(val == null ? "" : String(val)) + "</" + tag + ">";
+  let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+  xml += '<Forderungskonto version="1.0" erstellt="' + new Date().toISOString() + '">\n';
+  xml += "  <Stammdaten>\n";
+  xml += "    " + e("Aktenzeichen", state.aktenzeichen) + "\n";
+  xml += "    " + e("Betreff", state.betreff) + "\n";
+  xml += "    " + e("Stichtag", state.stichtag) + "\n";
+  xml += "    <Glaeubiger>\n      " + e("Name", state.glaeubiger.name) + "\n      " + e("Adresse", state.glaeubiger.adresse) + "\n    </Glaeubiger>\n";
+  xml += "    <Schuldner>\n      " + e("Name", state.schuldner.name) + "\n      " + e("Adresse", state.schuldner.adresse) + "\n    </Schuldner>\n";
+  xml += "  </Stammdaten>\n";
+
+  xml += "  <Forderungspositionen>\n";
+  state.positionen.forEach((p, i) => {
+    xml += '    <Position nr="' + (i + 1) + '" id="' + esc(p.id) + '">\n';
+    xml += "      " + e("Art", p.art || "einmalig") + "\n";
+    xml += "      " + e("Typ", p.typ) + "\n";
+    xml += "      " + e("Bezeichnung", p.bezeichnung) + "\n";
+    xml += "      " + e("Betrag", p.betrag) + "\n";
+    xml += "      " + e("Datum", p.datum) + "\n";
+    xml += "      " + e("Zinstyp", p.zinsTyp) + "\n";
+    xml += "      " + e("FreierZinssatz", p.freierZinssatz) + "\n";
+    if (p.art === "wiederkehrend") {
+      xml += "      <Wiederkehrend>\n";
+      xml += "        " + e("Intervall", p.intervall || "monatlich") + "\n";
+      xml += "        " + e("TagModus", p.tagModus || "kalender") + "\n";
+      xml += "        " + e("TagN", p.tagN ?? 1) + "\n";
+      xml += "        " + e("Wochentag", p.wochentag ?? 1) + "\n";
+      xml += "        " + e("Start", p.start || "") + "\n";
+      xml += "        " + e("Ende", p.ende || "") + "\n";
+      xml += "      </Wiederkehrend>\n";
+    }
+    xml += "    </Position>\n";
+  });
+  xml += "  </Forderungspositionen>\n";
+
+  xml += "  <Zahlungen>\n";
+  state.zahlungen.forEach((z, i) => {
+    xml += '    <Zahlung nr="' + (i + 1) + '" id="' + esc(z.id) + '">\n';
+    xml += "      " + e("Bezeichnung", z.bezeichnung) + "\n";
+    xml += "      " + e("Betrag", z.betrag) + "\n";
+    xml += "      " + e("Datum", z.datum) + "\n";
+    xml += "      " + e("Verrechnung", z.verrechnung) + "\n";
+    if (z.verrechnung === "manuell" && (z.manuelleVerteilung || []).length) {
+      xml += "      <Verteilung>\n";
+      z.manuelleVerteilung.forEach(v => {
+        xml += '        <Anteil positionId="' + esc(v.positionId) + '" betrag="' + esc(v.betrag) + '"/>\n';
+      });
+      xml += "      </Verteilung>\n";
+    }
+    xml += "    </Zahlung>\n";
+  });
+  xml += "  </Zahlungen>\n";
+
+  xml += "  <Basiszinssaetze quelle=\"" + esc(state.basisQuelle) + "\">\n";
+  basisSorted().forEach(b => {
+    xml += '    <Satz gueltigAb="' + esc(b.gueltigAb) + '" wert="' + esc(b.satz) + '"/>\n';
+  });
+  xml += "  </Basiszinssaetze>\n";
+  xml += "</Forderungskonto>\n";
+  return xml;
+}
+
+function saveXML() {
+  const xml = buildXML();
+  const name = (state.aktenzeichen || "Forderungskonto").replace(/[^\w.\-]+/g, "_") + ".xml";
+  downloadBlob(new Blob([xml], { type: "application/xml" }), name);
+}
+
+function parseXML(text) {
+  const doc = new DOMParser().parseFromString(text, "application/xml");
+  if (doc.querySelector("parsererror")) throw new Error("XML konnte nicht gelesen werden (ungültiges Format).");
+  if (doc.querySelector("lwc-export-buchungen") || doc.querySelector("forderungsbuchungList")) return parseLecare(doc);
+  const root = doc.querySelector("Forderungskonto");
+  if (root) return parseOwnXML(root);
+  throw new Error("Unbekanntes Format: weder eigenes <Forderungskonto> noch LECARE <lwc-export-buchungen> erkannt.");
+}
+
+function parseOwnXML(root) {
+  const g = (parent, tag) => { const n = parent && parent.querySelector(tag); return n ? n.textContent : ""; };
+  const st = leerState();
+  const stamm = root.querySelector("Stammdaten");
+  st.aktenzeichen = g(stamm, "Aktenzeichen");
+  st.betreff = g(stamm, "Betreff");
+  st.stichtag = g(stamm, "Stichtag") || todayISO();
+  st.glaeubiger = { name: g(stamm.querySelector("Glaeubiger"), "Name"), adresse: g(stamm.querySelector("Glaeubiger"), "Adresse") };
+  st.schuldner  = { name: g(stamm.querySelector("Schuldner"), "Name"),  adresse: g(stamm.querySelector("Schuldner"), "Adresse") };
+
+  st.positionen = $$("Forderungspositionen > Position", root).map(p => {
+    const w = p.querySelector("Wiederkehrend");
+    return {
+      id: p.getAttribute("id") || uid(),
+      art: g(p, "Art") || "einmalig",
+      typ: g(p, "Typ") || "haupt",
+      bezeichnung: g(p, "Bezeichnung"),
+      betrag: g(p, "Betrag"),
+      datum: g(p, "Datum"),
+      zinsTyp: g(p, "Zinstyp") || "5pp",
+      freierZinssatz: g(p, "FreierZinssatz"),
+      intervall: w ? (g(w, "Intervall") || "monatlich") : "monatlich",
+      tagModus: w ? (g(w, "TagModus") || "kalender") : "kalender",
+      tagN: w ? (g(w, "TagN") || 1) : 1,
+      wochentag: w ? (g(w, "Wochentag") || 1) : 1,
+      start: w ? g(w, "Start") : "",
+      ende: w ? g(w, "Ende") : ""
+    };
+  });
+
+  st.zahlungen = $$("Zahlungen > Zahlung", root).map(z => ({
+    id: z.getAttribute("id") || uid(),
+    bezeichnung: g(z, "Bezeichnung"),
+    betrag: g(z, "Betrag"),
+    datum: g(z, "Datum"),
+    verrechnung: g(z, "Verrechnung") || "gesetzlich",
+    manuelleVerteilung: $$("Verteilung > Anteil", z).map(a => ({
+      positionId: a.getAttribute("positionId"),
+      betrag: a.getAttribute("betrag")
+    }))
+  }));
+
+  const basisNodes = $$("Basiszinssaetze > Satz", root);
+  if (basisNodes.length) {
+    st.basiszinssaetze = basisNodes.map(s => ({
+      id: uid(), gueltigAb: s.getAttribute("gueltigAb"), satz: num(s.getAttribute("wert"))
+    }));
+  }
+  const bq = root.querySelector("Basiszinssaetze");
+  if (bq && bq.getAttribute("quelle")) st.basisQuelle = bq.getAttribute("quelle");
+  return st;
+}
+
+/* ---------- LECARE-Import (lwc-export-buchungen) ----------
+   Mapping:
+     buchungsartID 0 = Hauptforderung, 3 = Kostenforderung, 9 = Zahlung,
+     4 = Verzinsungs-/Zinskapital-Buchung (zinsKapitalBetrag = verzinslicher Teilbetrag).
+   LECARE bucht Zinsen getrennt vom Kapital; die art-4-Beträge sind Teilbeträge der
+   Hauptforderung und werden als eigene verzinsliche Positionen übernommen, der
+   Hauptforderungsbetrag wird entsprechend reduziert (keine Doppelzählung). */
+function lecChild(b, tag) {
+  for (const c of b.children) if (c.tagName === tag) return (c.textContent || "").trim();
+  return "";
+}
+function lecDate(b, tag) { const v = lecChild(b, tag); return v ? v.slice(0, 10) : ""; }
+function lecZinsTyp(staffel, fest, info, label) {
+  if (Math.abs(fest) > 1e-9) return { zinsTyp: "frei", frei: String(fest) };
+  const s = staffel;
+  if (Math.abs(s - 5) < 1e-6) return { zinsTyp: "5pp", frei: "" };
+  if (Math.abs(s - 9) < 1e-6) return { zinsTyp: "9pp", frei: "" };
+  if (Math.abs(s) > 1e-9) { info.push("„" + label + "“: Zinssatz Basis + " + fmtPct(s) + " ist kein gesetzlicher Satz (5/9 PP) und wurde als fester Satz " + fmtPct(s) + " übernommen – bitte prüfen."); return { zinsTyp: "frei", frei: String(s) }; }
+  return { zinsTyp: "keine", frei: "" };
+}
+function parseLecare(doc) {
+  const st = leerState();
+  const info = [];
+  const kbNode = doc.querySelector("kontoBezeichnung");
+  const kb = kbNode ? (kbNode.textContent || "").trim() : "";
+  if (kb) {
+    st.betreff = kb;
+    const parts = kb.split(/\s*\.\/\.\s*/);
+    if (parts.length === 2) { st.glaeubiger.name = parts[0].trim(); st.schuldner.name = parts[1].trim(); }
+  }
+  st.stichtag = todayISO();
+
+  const positionen = [], zahlungen = [], art4 = [], art0 = [];
+  $$("forderungsbuchung", doc).forEach(b => {
+    const artID = lecChild(b, "buchungsartID");
+    const text = lecChild(b, "buchungstext");
+    const ent = lecDate(b, "entstehungDatum");
+    const ums = num(lecChild(b, "umsatzBetrag"));
+
+    if (artID === "9") { // Zahlung
+      zahlungen.push({ id: uid(), bezeichnung: text || "Zahlung", betrag: String(ums), datum: ent, verrechnung: "gesetzlich", manuelleVerteilung: [] });
+      return;
+    }
+    if (artID === "4") { // Verzinsungs-/Zinskapital-Buchung
+      const base = num(lecChild(b, "zinsKapitalBetrag"));
+      const vb = lecDate(b, "verzinsungBeginnDatum") || ent;
+      const zt = lecZinsTyp(num(lecChild(b, "zinsSatzStaffel")), num(lecChild(b, "zinsSatzFest")), info, text);
+      art4.push({ text, base, vb, zinsTyp: zt.zinsTyp, frei: zt.frei, typ: /kosten/i.test(text) ? "kosten" : "haupt" });
+      return;
+    }
+    // art 0 (HF), art 3 (KF) und sonstige -> Forderung
+    const typ = artID === "3" ? "kosten" : "haupt";
+    const vart = lecChild(b, "verzinsungsartID");
+    let zt = { zinsTyp: "keine", frei: "" };
+    if (vart && vart !== "0" && vart !== "-1") zt = lecZinsTyp(num(lecChild(b, "zinsSatzStaffel")), num(lecChild(b, "zinsSatzFest")), info, text);
+    const pos = { id: uid(), art: "einmalig", typ, bezeichnung: text, betrag: String(ums), datum: ent, zinsTyp: zt.zinsTyp, freierZinssatz: zt.frei,
+      intervall: "monatlich", tagModus: "kalender", tagN: 1, wochentag: 1, start: "", ende: "" };
+    positionen.push(pos);
+    if (artID === "0") art0.push(pos);
+  });
+
+  // art-4 verzinsliche Teilbeträge übernehmen und Hauptforderung bereinigen
+  if (art4.length) {
+    let totalSub = 0;
+    art4.forEach(z => {
+      positionen.push({ id: uid(), art: "einmalig", typ: z.typ, bezeichnung: z.text, betrag: String(z.base), datum: z.vb, zinsTyp: z.zinsTyp, freierZinssatz: z.frei,
+        intervall: "monatlich", tagModus: "kalender", tagN: 1, wochentag: 1, start: "", ende: "" });
+      totalSub += z.base;
+    });
+    if (art0.length === 1) {
+      const hf = art0[0];
+      const rest = Math.round((num(hf.betrag) - totalSub) * 100) / 100;
+      if (rest > 0.005) {
+        hf.betrag = String(rest); hf.zinsTyp = "keine"; hf.freierZinssatz = "";
+        hf.bezeichnung = hf.bezeichnung + " (nicht verzinslicher Anteil)";
+        info.push("Hauptforderung: verzinsliche Teilbeträge (Σ " + fmtEUR(totalSub) + ") als eigene verzinsliche Positionen übernommen; unverzinslicher Restbetrag " + fmtEUR(rest) + " verbleibt als Hauptforderung.");
+      } else if (Math.abs(rest) <= 0.005) {
+        const i = positionen.indexOf(hf); if (i >= 0) positionen.splice(i, 1);
+        info.push("Die Hauptforderung entspricht den verzinslichen Teilbeträgen und wurde durch diese ersetzt (keine Doppelzählung).");
+      } else {
+        hf.zinsTyp = "keine";
+        info.push("Achtung: verzinsliche Teilbeträge (Σ " + fmtEUR(totalSub) + ") übersteigen die Hauptforderung (" + fmtEUR(num(hf.betrag)) + "). Beide übernommen – bitte auf Doppelzählung prüfen.");
+      }
+    } else {
+      info.push("Keine eindeutige Hauptforderung: verzinsliche Teilbeträge (art 4) als eigene Positionen ergänzt. Bitte auf Überschneidung mit dem Kapital prüfen (mögliche Doppelzählung).");
+    }
+  }
+
+  st.positionen = positionen;
+  st.zahlungen = zahlungen;
+  st._lecare = true;
+  st._importInfo = info;
+  st._importCounts = { pos: positionen.length, zahl: zahlungen.length };
+  return st;
+}
+
+function importReport(file) {
+  if (!state._lecare) { toast("Datei „" + file.name + "“ geladen."); return; }
+  const c = state._importCounts || { pos: state.positionen.length, zahl: state.zahlungen.length };
+  let r = "LECARE-Import erfolgreich.\n\n• " + c.pos + " Forderungspositionen\n• " + c.zahl + " Zahlungen\n";
+  const info = state._importInfo || [];
+  if (info.length) r += "\nHinweise:\n– " + info.join("\n– ");
+  r += "\n\nBitte Forderungspositionen und Verzinsung im Kontoauszug prüfen.";
+  toast("LECARE-Datei „" + file.name + "“ importiert.");
+  alert(r);
+}
+
+function loadXMLFile(file) {
+  const fr = new FileReader();
+  fr.onload = () => {
+    try { state = parseXML(fr.result); renderAll(); importReport(file); }
+    catch (err) { alert("Laden fehlgeschlagen: " + err.message); }
+  };
+  fr.onerror = () => alert("Datei konnte nicht gelesen werden.");
+  fr.readAsText(file, "UTF-8");
+}
+
+async function loadFromURL() {
+  const url = $("#load-url").value.trim();
+  if (!url) { alert("Bitte einen Link zur XML-Datei einfügen."); return; }
+  const status = $("#url-status");
+  status.className = "status"; status.textContent = "Lade …";
+  try {
+    let u = url;
+    // SharePoint-Freigabelinks brauchen oft download=1
+    if (/sharepoint\.com|1drv\.ms|my\.sharepoint/.test(u) && !/download=1/.test(u)) {
+      u += (u.includes("?") ? "&" : "?") + "download=1";
+    }
+    const res = await fetch(u);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const txt = await res.text();
+    state = parseXML(txt); renderAll();
+    status.className = "status ok"; status.textContent = "Geladen.";
+  } catch (e) {
+    status.className = "status warn";
+    status.innerHTML = "Abruf nicht möglich (" + esc(e.message) + "). SharePoint-Links erfordern in der Regel Anmeldung und erlauben keinen direkten Browser-Abruf (CORS). " +
+      "Bitte die XML-Datei herunterladen und über „Datei wählen“ laden.";
+  }
+}
+
+/* ============================================================
+   WORD-EXPORT (docx via CDN, mit Fallback auf .doc/HTML)
+   ============================================================ */
+async function exportWord() {
+  const r = lastResult || computeAccount();
+  const name = (state.aktenzeichen || "Forderungskonto").replace(/[^\w.\-]+/g, "_");
+  if (window.docx && window.docx.Document) {
+    try { await exportDocxLib(r, name); return; }
+    catch (e) { console.warn("docx-Bibliothek fehlgeschlagen, Fallback:", e); }
+  }
+  exportDocFallback(r, name);
+}
+
+async function exportDocxLib(r, name) {
+  const D = window.docx;
+  const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, HeadingLevel, BorderStyle } = D;
+  const eur = (n) => fmtEUR(n);
+  const cell = (text, opt = {}) => new TableCell({
+    width: { size: opt.w || 0, type: WidthType.AUTO },
+    children: [new Paragraph({ alignment: opt.r ? AlignmentType.RIGHT : AlignmentType.LEFT,
+      children: [new TextRun({ text: String(text), bold: !!opt.b, size: 18 })] })]
+  });
+  const head = (t) => cell(t, { b: true });
+
+  const posRows = [new TableRow({ tableHeader: true, children: [
+    head("Nr."), head("Art"), head("Datum"), head("Bezeichnung"), head("Forderung"),
+    head("Verzinsung"), head("Zinsen aufgel."), head("Restkapital"), head("Restzinsen"), head("Zwischensumme")
+  ] })];
+  r.rows.forEach(row => posRows.push(new TableRow({ children: [
+    cell(row.nr), cell(row.typ === "haupt" ? "HF" : "KF"), cell(fmtDate(row.datum)),
+    cell(row.bezeichnung || "—"), cell(eur(row.betrag), { r: true }), cell(row.rateInfo),
+    cell(eur(row.zinsenAufgelaufen), { r: true }), cell(eur(row.restKapital), { r: true }),
+    cell(eur(row.restZinsen), { r: true }), cell(eur(row.zwischensumme), { r: true, b: true })
+  ] })));
+
+  const sumLines = [
+    ["Hauptforderungen (offen)", r.sumHaupt],
+    ["Kostenforderungen (offen)", r.sumKosten],
+    ["Zinsen (aufgelaufen, offen)", r.sumZinsen]
+  ];
+  if (r.guthaben > 0.005) {
+    sumLines.push(["Summe offene Forderungen", r.offen]);
+    sumLines.push(["abzüglich Guthaben (Überzahlung)", -r.guthaben]);
+  }
+  sumLines.push(["Summe Zahlungen (nachrichtlich)", r.sumZahlung]);
+  const sumRows = sumLines.map(([t, v]) => new TableRow({ children: [cell(t), cell(eur(v), { r: true })] }));
+  const netLabel = r.gesamt < -0.005 ? "Guthaben zugunsten Schuldner zum " + fmtDate(r.stichtag) : "Gesamtsaldo zum " + fmtDate(r.stichtag);
+  sumRows.push(new TableRow({ children: [cell(netLabel, { b: true }), cell(eur(Math.abs(r.gesamt)), { r: true, b: true })] }));
+
+  const children = [
+    new Paragraph({ children: [new TextRun({ text: "Forderungskonto / Forderungsaufstellung", bold: true, size: 30 })] }),
+    new Paragraph({ children: [new TextRun({ text: "Stichtag: " + fmtDate(r.stichtag), size: 20 })] }),
+    new Paragraph({ text: "" }),
+    new Paragraph({ children: [new TextRun({ text: "Gläubiger: ", bold: true, size: 20 }), new TextRun({ text: state.glaeubiger.name + (state.glaeubiger.adresse ? ", " + state.glaeubiger.adresse.replace(/\n/g, ", ") : ""), size: 20 })] }),
+    new Paragraph({ children: [new TextRun({ text: "Schuldner: ", bold: true, size: 20 }), new TextRun({ text: state.schuldner.name + (state.schuldner.adresse ? ", " + state.schuldner.adresse.replace(/\n/g, ", ") : ""), size: 20 })] }),
+    new Paragraph({ children: [new TextRun({ text: "Aktenzeichen: ", bold: true, size: 20 }), new TextRun({ text: state.aktenzeichen || "—", size: 20 })] }),
+    new Paragraph({ children: [new TextRun({ text: "Betreff: ", bold: true, size: 20 }), new TextRun({ text: state.betreff || "—", size: 20 })] }),
+    new Paragraph({ text: "" }),
+    new Paragraph({ children: [new TextRun({ text: "Forderungspositionen", bold: true, size: 24 })] }),
+    new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: posRows })
+  ];
+
+  // Buchungsjournal – chronologisch
+  const journal = buildJournal(r);
+  if (journal.length) {
+    children.push(new Paragraph({ text: "" }), new Paragraph({ children: [new TextRun({ text: "Buchungsjournal (chronologisch)", bold: true, size: 24 })] }));
+    const jRows = [new TableRow({ tableHeader: true, children: [head("Datum"), head("Vorgang"), head("Forderung"), head("Zahlung"), head("Aufschlüsselung"), head("Saldo Kapital")] })];
+    journal.forEach(e => {
+      if (e.kind === "pos") {
+        jRows.push(new TableRow({ children: [
+          cell(fmtDate(isoFromUTC(e.date))),
+          cell("Pos. " + e.nr + " – " + e.label + " (" + (e.typ === "haupt" ? "HF" : "KF") + ")"),
+          cell(eur(e.betrag), { r: true }), cell("—", { r: true }),
+          cell("Forderung entstanden"), cell(eur(e.saldo), { r: true })
+        ] }));
+      } else {
+        jRows.push(new TableRow({ children: [
+          cell(fmtDate(isoFromUTC(e.date))),
+          cell("Zahlung " + e.nr + " – " + e.label + " (" + verrLabel(e.verrechnung) + ")"),
+          cell("—", { r: true }), cell(eur(e.betrag), { r: true }),
+          cell(aufString(e.applied)), cell(eur(e.saldo), { r: true })
+        ] }));
+      }
+    });
+    children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: jRows }));
+  }
+
+  // Zinsstaffel – konsolidiert (laufender Saldo, Etappen)
+  const ks = buildKontostaffel(r.rows);
+  if (ks.length) {
+    children.push(new Paragraph({ text: "" }), new Paragraph({ children: [new TextRun({ text: "Zinsstaffel (laufender Saldo, Etappenberechnung)", bold: true, size: 24 })] }));
+    ks.forEach(g => {
+      if (g.multi) children.push(new Paragraph({ children: [new TextRun({ text: g.label, bold: true, size: 18 })] }));
+      const sRows = [new TableRow({ tableHeader: true, children: [head("Zeitraum"), head("Vorgang"), head("Saldo"), head("Zinssatz"), head("Zinstage"), head("Zinsen")] })];
+      g.rows.forEach(s => {
+        sRows.push(new TableRow({ children: [
+          cell(fmtDate(isoFromUTC(s.von)) + " – " + fmtDate(isoFromUTC(s.bis - MS_DAY))),
+          cell(s.vorgang), cell(eur(s.saldo), { r: true }),
+          cell(s.satz === null ? "—" : fmtPct(s.satz), { r: true }),
+          cell(String(s.tage), { r: true }), cell(eur(s.zins), { r: true })
+        ] }));
+      });
+      sRows.push(new TableRow({ children: [cell("Summe Zinsen"), cell(""), cell(""), cell(""), cell(""), cell(eur(g.sum), { r: true })] }));
+      children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: sRows }), new Paragraph({ text: "" }));
+    });
+  }
+
+  const validZ = r.payments.filter(z => z.valid);
+  if (validZ.length) {
+    const zRows = [new TableRow({ tableHeader: true, children: [head("Nr."), head("Datum"), head("Bezeichnung"), head("Betrag"), head("Verrechnung"), head("Aufschlüsselung")] })];
+    validZ.forEach(z => {
+      const auf = (z.applied || []).map(a => a.ueberzahlung ? "Überzahlung " + eur(a.ueberzahlung)
+        : "Pos. " + a.posNr + ": " + [a.zins ? "Zins " + eur(a.zins) : "", a.kapital ? "Kapital " + eur(a.kapital) : ""].filter(Boolean).join(", ")).join(" · ");
+      zRows.push(new TableRow({ children: [cell(z.nr), cell(fmtDate(z.datum)), cell(z.bezeichnung || "—"), cell(eur(z.betrag), { r: true }), cell(verrLabel(z.verrechnung)), cell(auf || "—")] }));
+    });
+    children.push(new Paragraph({ text: "" }), new Paragraph({ children: [new TextRun({ text: "Zahlungen", bold: true, size: 24 })] }),
+      new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: zRows }));
+  }
+
+  children.push(new Paragraph({ text: "" }), new Paragraph({ children: [new TextRun({ text: "Zusammenstellung", bold: true, size: 24 })] }),
+    new Table({ width: { size: 60, type: WidthType.PERCENTAGE }, rows: sumRows }),
+    new Paragraph({ text: "" }),
+    new Paragraph({ children: [new TextRun({ text: "Berechnungsmethode: taggenaue Zinsberechnung (actual/actual, Zinsjahr 365/366), Berücksichtigung halbjährlicher Basiszinssatzänderungen (§ 247 BGB), gesetzliche Verrechnung gem. § 367 Abs. 1 BGB (Kosten – Zinsen – Hauptforderung). Aufgelaufene Zinsen werden nicht weiterverzinst (§ 289 BGB).", italics: true, size: 16 })] })
+  );
+
+  const doc = new Document({ sections: [{ properties: {}, children }] });
+  const blob = await Packer.toBlob(doc);
+  downloadBlob(blob, name + ".docx");
+}
+
+function exportDocFallback(r, name) {
+  const eur = (n) => fmtEUR(n);
+  let h = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+  <head><meta charset="utf-8"><title>Forderungskonto</title>
+  <style>body{font-family:'Open Sans','Calibri',sans-serif;font-size:11pt;color:#2c353d}
+  h1{font-size:16pt;text-transform:uppercase;color:#2c353d}h2{font-size:12pt;text-transform:uppercase;color:#2c353d;border-bottom:2px solid #ff6a1a;padding-bottom:2px}
+  table{border-collapse:collapse;width:100%;font-size:9pt}td,th{border:1px solid #c9ced2;padding:3px 5px}th{background:#2c353d;color:#fff;text-align:left}
+  .r{text-align:right}.note{font-style:italic;font-size:8pt;color:#666}
+  .lh{border-bottom:3px solid #efbb20;padding-bottom:8px;margin-bottom:12px;text-align:right}.lh img{height:48px}</style></head><body>`;
+  h += `<div class="lh"><img src="https://mhanwaelte.de/wp-content/uploads/2026/05/mh-dreizeiler-frei-1-300x160.png" alt="mh emmerich anwälte frankfurt"></div>`;
+  h += `<h1>Forderungsaufstellung</h1><p>Stichtag: ${fmtDate(r.stichtag)}</p>`;
+  h += `<p><b>Gläubiger:</b> ${esc(state.glaeubiger.name)}${state.glaeubiger.adresse ? ", " + esc(state.glaeubiger.adresse.replace(/\n/g, ", ")) : ""}<br>
+        <b>Schuldner:</b> ${esc(state.schuldner.name)}${state.schuldner.adresse ? ", " + esc(state.schuldner.adresse.replace(/\n/g, ", ")) : ""}<br>
+        <b>Aktenzeichen:</b> ${esc(state.aktenzeichen) || "—"}<br><b>Betreff:</b> ${esc(state.betreff) || "—"}</p>`;
+  h += `<h2>Forderungspositionen</h2><table><tr><th>Nr.</th><th>Art</th><th>Datum</th><th>Bezeichnung</th><th>Forderung</th><th>Verzinsung</th><th>Zinsen aufgel.</th><th>Restkapital</th><th>Restzinsen</th><th>Zwischensumme</th></tr>`;
+  r.rows.forEach(row => {
+    h += `<tr><td>${row.nr}</td><td>${row.typ === "haupt" ? "HF" : "KF"}</td><td>${fmtDate(row.datum)}</td><td>${esc(row.bezeichnung)}</td>
+      <td class="r">${eur(row.betrag)}</td><td>${esc(row.rateInfo)}</td><td class="r">${eur(row.zinsenAufgelaufen)}</td>
+      <td class="r">${eur(row.restKapital)}</td><td class="r">${eur(row.restZinsen)}</td><td class="r">${eur(row.zwischensumme)}</td></tr>`;
+  });
+  h += `</table>`;
+  const journal = buildJournal(r);
+  if (journal.length) {
+    h += `<h2>Buchungsjournal (chronologisch)</h2><table><tr><th>Datum</th><th>Vorgang</th><th>Forderung</th><th>Zahlung</th><th>Aufschlüsselung</th><th>Saldo Kapital</th></tr>`;
+    journal.forEach(e => {
+      if (e.kind === "pos") {
+        h += `<tr><td>${fmtDate(isoFromUTC(e.date))}</td><td>Pos. ${e.nr} – ${esc(e.label)} (${e.typ === "haupt" ? "HF" : "KF"})</td><td class="r">${eur(e.betrag)}</td><td class="r">—</td><td>Forderung entstanden</td><td class="r">${eur(e.saldo)}</td></tr>`;
+      } else {
+        h += `<tr><td>${fmtDate(isoFromUTC(e.date))}</td><td>Zahlung ${e.nr} – ${esc(e.label)} (${verrLabel(e.verrechnung)})</td><td class="r">—</td><td class="r">${eur(e.betrag)}</td><td>${esc(aufString(e.applied))}</td><td class="r">${eur(e.saldo)}</td></tr>`;
+      }
+    });
+    h += `</table>`;
+  }
+  const ks = buildKontostaffel(r.rows);
+  if (ks.length) {
+    h += `<h2>Zinsstaffel (laufender Saldo, Etappenberechnung)</h2>`;
+    ks.forEach(g => {
+      if (g.multi) h += `<p style="margin:8px 0 2px"><b>${esc(g.label)}</b></p>`;
+      h += `<table><tr><th>Zeitraum</th><th>Vorgang</th><th>Saldo</th><th>Zinssatz</th><th>Zinstage</th><th>Zinsen</th></tr>`;
+      g.rows.forEach(s => {
+        h += `<tr><td>${fmtDate(isoFromUTC(s.von))} – ${fmtDate(isoFromUTC(s.bis - MS_DAY))}</td><td>${s.vorgang}</td><td class="r">${eur(s.saldo)}</td><td class="r">${s.satz === null ? "—" : fmtPct(s.satz)}</td><td class="r">${s.tage}</td><td class="r">${eur(s.zins)}</td></tr>`;
+      });
+      h += `<tr><td colspan="5"><b>Summe Zinsen</b></td><td class="r"><b>${eur(g.sum)}</b></td></tr></table>`;
+    });
+  }
+  const vz = r.payments.filter(z => z.valid);
+  if (vz.length) {
+    h += `<h2>Zahlungen</h2><table><tr><th>Nr.</th><th>Datum</th><th>Bezeichnung</th><th>Betrag</th><th>Verrechnung</th><th>Aufschlüsselung</th></tr>`;
+    vz.forEach(z => {
+      const auf = (z.applied || []).map(a => a.ueberzahlung ? "Überzahlung " + eur(a.ueberzahlung) : "Pos. " + a.posNr + ": " + [a.zins ? "Zins " + eur(a.zins) : "", a.kapital ? "Kapital " + eur(a.kapital) : ""].filter(Boolean).join(", ")).join(" · ");
+      h += `<tr><td>${z.nr}</td><td>${fmtDate(z.datum)}</td><td>${esc(z.bezeichnung)}</td><td class="r">${eur(z.betrag)}</td><td>${verrLabel(z.verrechnung)}</td><td>${esc(auf)}</td></tr>`;
+    });
+    h += `</table>`;
+  }
+  h += `<h2>Zusammenstellung</h2><table>
+    <tr><td>Hauptforderungen (offen)</td><td class="r">${eur(r.sumHaupt)}</td></tr>
+    <tr><td>Kostenforderungen (offen)</td><td class="r">${eur(r.sumKosten)}</td></tr>
+    <tr><td>Zinsen (aufgelaufen, offen)</td><td class="r">${eur(r.sumZinsen)}</td></tr>
+    ${r.guthaben > 0.005 ? `<tr><td>Summe offene Forderungen</td><td class="r">${eur(r.offen)}</td></tr>
+    <tr><td>abzüglich Guthaben (Überzahlung)</td><td class="r">− ${eur(r.guthaben)}</td></tr>` : ""}
+    <tr><td>Summe Zahlungen (nachrichtlich)</td><td class="r">${eur(r.sumZahlung)}</td></tr>
+    <tr><td><b>${r.gesamt < -0.005 ? "Guthaben zugunsten Schuldner zum " + fmtDate(r.stichtag) : "Gesamtsaldo zum " + fmtDate(r.stichtag)}</b></td><td class="r"><b>${eur(Math.abs(r.gesamt))}</b></td></tr></table>`;
+  h += `<p class="note">Berechnung: taggenau (actual/actual, 365/366), halbjährliche Basiszinssatzänderung (§ 247 BGB), Verrechnung § 367 Abs. 1 BGB (Kosten – Zinsen – Hauptforderung), keine Zinseszinsen (§ 289 BGB).</p>`;
+  h += `</body></html>`;
+  downloadBlob(new Blob(["\ufeff" + h], { type: "application/msword" }), name + ".doc");
+}
+
+/* ---------- Download / Toast ---------- */
+function downloadBlob(blob, filename) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+function toast(msg) {
+  const t = $("#toast");
+  t.textContent = msg; t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 2600);
+}
+
+/* ---------- Demo ---------- */
+function loadDemo() {
+  const p1 = uid(), p2 = uid(), p3 = uid(), p4 = uid();
+  state = {
+    glaeubiger: { name: "Muster Bau GmbH", adresse: "Industriestraße 4\n60311 Frankfurt am Main" },
+    schuldner:  { name: "Schuldner Handels UG", adresse: "Marktplatz 9\n63450 Hanau" },
+    aktenzeichen: "2024-0815",
+    betreff: "Werklohnforderung Bauvorhaben Steinheim",
+    stichtag: todayISO(),
+    positionen: [
+      { id: p1, art: "einmalig", typ: "haupt",  bezeichnung: "Werklohn Schlussrechnung R-2023-204", betrag: "18500", datum: "2023-09-15", zinsTyp: "9pp", freierZinssatz: "" },
+      { id: p2, art: "einmalig", typ: "kosten", bezeichnung: "vorgerichtliche RA-Kosten",           betrag: "1054.10", datum: "2023-11-02", zinsTyp: "5pp", freierZinssatz: "" },
+      { id: p3, art: "einmalig", typ: "haupt",  bezeichnung: "Nachtrag Mehrleistung",                betrag: "3200", datum: "2024-02-20", zinsTyp: "9pp", freierZinssatz: "" },
+      { id: p4, art: "wiederkehrend", typ: "haupt", bezeichnung: "Nutzungsentschädigung", betrag: "850", datum: "", zinsTyp: "9pp", freierZinssatz: "",
+        intervall: "monatlich", tagModus: "werktag", tagN: 3, wochentag: 1, start: "2024-01-01", ende: "2024-06-30" }
+    ],
+    zahlungen: [
+      { id: uid(), bezeichnung: "Teilzahlung 1", betrag: "5000", datum: "2024-04-10", verrechnung: "gesetzlich", manuelleVerteilung: [] },
+      { id: uid(), bezeichnung: "Zahlung mit Tilgungsbestimmung", betrag: "2500", datum: "2024-08-15", verrechnung: "manuell_rest", manuelleVerteilung: [{ positionId: p3, betrag: "1500" }] }
+    ],
+    basiszinssaetze: defaultBasis(),
+    basisQuelle: "Manuell hinterlegt (Werte gem. Bekanntmachung Deutsche Bundesbank, § 247 BGB)"
+  };
+  renderAll();
+  toast("Beispieldaten geladen.");
+}
+
+/* ---------- Init ---------- */
+window.addEventListener("DOMContentLoaded", () => { bindEvents(); renderAll(); });
+
+</script>
+</body>
+</html>
