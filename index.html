@@ -194,6 +194,7 @@ table.sum-table tr.grand td{font-family:var(--serif);font-size:18px;font-weight:
 @media print{
   @page{size:A4 portrait;margin:16mm 14mm}
   .topbar,.tabs,#toast{display:none!important}
+  #ka-loadcard,#panel-auszug .section-h,#url-status{display:none!important}
   .wrap{max-width:none;padding:0}
   .panel{display:none!important}
   #panel-auszug{display:block!important}
@@ -319,7 +320,7 @@ table.sum-table tr.grand td{font-family:var(--serif);font-size:18px;font-weight:
       <h2>Kontoauszug</h2>
       <div class="hint">Taggenaue Berechnung bis zum Stichtag. Für PDF: Button „PDF“ oben (Druckdialog).</div>
     </div>
-    <div class="card" style="padding:16px 20px;margin-bottom:16px">
+    <div class="card" id="ka-loadcard" style="padding:16px 20px;margin-bottom:16px">
       <div class="url-load">
         <label>Laden über Link (z.B. SharePoint-Direktlink zur XML)
           <input id="load-url" placeholder="https://… .xml">
