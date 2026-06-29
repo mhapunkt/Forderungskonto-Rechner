@@ -474,8 +474,10 @@ function todayISO() {
   return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
 }
 function fmtDate(iso) {
-  if (!iso) return "—";
-  const [y, m, d] = iso.split("-");
+  if (iso == null || iso === "") return "—";
+  if (typeof iso === "number") iso = isoFromUTC(iso);
+  const [y, m, d] = String(iso).split("-");
+  if (!y || !m || !d) return "—";
   return d + "." + m + "." + y;
 }
 function fmtEUR(n) {
@@ -1642,7 +1644,7 @@ function renderTilgResult() {
     + row(r.manuell ? "Startsaldo (manuell)" : "Offener Saldo lt. Forderungskonto", fmtEUR(r.basis))
     + (r.kosten ? row("zzgl. Kosten der Ratenzahlungsvereinbarung", fmtEUR(r.kosten)) : "")
     + (r.zinsBetrag ? row("zzgl. vereinbarte Zinsen", fmtEUR(r.zinsBetrag)) : "")
-    + rowStrong("Startsaldo zum " + fmtDate(r.anfang), fmtEUR(r.startSaldo))
+    + rowStrong("Startsaldo zum " + fmtDate(isoFromUTC(r.anfang)), fmtEUR(r.startSaldo))
     + row("Rate", rateTxt)
     + row("Intervall", INTERVALL_LABEL[r.intervall] || r.intervall)
     + row("Zinsen während Ratenzahlung", zinsTxt)
